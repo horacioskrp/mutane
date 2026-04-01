@@ -1,0 +1,60 @@
+package templates
+
+import (
+	"fmt"
+	"mutane/internal/content"
+)
+
+templ ContentList(contentTypes []content.ContentType) {
+	@Layout("Contenu") {
+		@Navbar()
+		<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+			<div class="flex items-center justify-between mb-6">
+				<h1 class="text-2xl font-bold text-gray-900">Types de contenu</h1>
+				<a
+					href="/content/new"
+					class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+				>
+					+ Nouveau type
+				</a>
+			</div>
+			if len(contentTypes) == 0 {
+				<div class="text-center py-16 text-gray-400">
+					<p class="text-lg">Aucun type de contenu pour l'instant.</p>
+					<p class="text-sm mt-1">Créez votre premier type de contenu pour commencer.</p>
+				</div>
+			} else {
+				<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+					<table class="w-full text-sm">
+						<thead class="bg-gray-50 border-b border-gray-100">
+							<tr>
+								<th class="text-left px-6 py-3 text-gray-500 font-medium">Nom</th>
+								<th class="text-left px-6 py-3 text-gray-500 font-medium">Slug</th>
+								<th class="text-left px-6 py-3 text-gray-500 font-medium">Champs</th>
+								<th class="px-6 py-3"></th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-50">
+							for _, ct := range contentTypes {
+								<tr class="hover:bg-gray-50 transition-colors">
+									<td class="px-6 py-4 font-medium text-gray-900">{ ct.Name }</td>
+									<td class="px-6 py-4 text-gray-500 font-mono">{ ct.Slug }</td>
+									<td class="px-6 py-4 text-gray-500">{ len(ct.Fields) } champs</td>
+									<td class="px-6 py-4 text-right">
+										<a href={ templ.SafeURL("/content/" + itoa(ct.ID)) } class="text-indigo-600 hover:underline">
+											Gérer
+										</a>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</main>
+	}
+}
+
+func itoa(n int64) string {
+	return fmt.Sprintf("%d", n)
+}

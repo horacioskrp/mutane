@@ -1,0 +1,34 @@
+package templates
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="fr">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title } — Mutane CMS</title>
+			<link rel="stylesheet" href="/static/output.css"/>
+		</head>
+		<body class="bg-gray-100 min-h-screen font-sans">
+			{ children... }
+		</body>
+	</html>
+}
+
+templ Navbar() {
+	<nav class="bg-white shadow-sm border-b border-gray-200">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+			<a href="/dashboard" class="text-xl font-bold text-indigo-600">Mutane CMS</a>
+			<div class="flex items-center gap-4">
+				<a href="/content" class="text-sm text-gray-600 hover:text-indigo-600">Contenu</a>
+				<a href="/media" class="text-sm text-gray-600 hover:text-indigo-600">Médias</a>
+				<button
+					hx-post="/api/auth/logout"
+					class="text-sm text-red-500 hover:text-red-700"
+				>
+					Déconnexion
+				</button>
+			</div>
+		</div>
+	</nav>
+}

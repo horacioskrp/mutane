@@ -1,0 +1,24 @@
+package templates
+
+templ Dashboard() {
+	@Layout("Dashboard") {
+		@Navbar()
+		<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+			<h1 class="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+			<div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+				<div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+					<p class="text-sm text-gray-500">Types de contenu</p>
+					<p class="text-3xl font-bold text-indigo-600 mt-1" id="count-types">—</p>
+				</div>
+				<div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+					<p class="text-sm text-gray-500">Entrées</p>
+					<p class="text-3xl font-bold text-indigo-600 mt-1" id="count-entries">—</p>
+				</div>
+				<div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+					<p class="text-sm text-gray-500">Médias</p>
+					<p class="text-3xl font-bold text-indigo-600 mt-1" id="count-media">—</p>
+				</div>
+			</div>
+		</main>
+	}
+}

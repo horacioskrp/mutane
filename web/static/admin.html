@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mutane CMS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','sans-serif'] },
+          colors: {
+            sidebar: '#0d1117',
+            'sidebar-border': '#21262d',
+            'sidebar-hover': '#161b22',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:#334155; border-radius:99px; }
+    .nav-link { @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-400 hover:bg-[#161b22] hover:text-slate-100 transition-all cursor-pointer select-none; }
+    .nav-link.active { @apply bg-[#1c2128] text-white; }
+    .nav-link.active svg { @apply text-indigo-400; }
+    input:focus, textarea:focus, select:focus { outline:none; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation: fadeIn 0.18s ease-out forwards; }
+    @keyframes slideUp { from{opacity:0;transform:translateY(10px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .slide-up { animation: slideUp 0.2s ease-out forwards; }
+    .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  </style>
+</head>
+<body class="h-full flex bg-slate-50 text-slate-900" id="app">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════════════════ -->
+<aside id="sidebar" class="w-56 shrink-0 flex flex-col h-full bg-[#0d1117] border-r border-[#21262d] overflow-hidden">
+
+  <!-- Brand -->
+  <div class="flex items-center gap-2.5 h-14 px-4 border-b border-[#21262d] shrink-0">
+    <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30 shrink-0">
+      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+      </svg>
+    </div>
+    <div>
+      <p class="text-[13px] font-semibold text-white leading-none">Mutane CMS</p>
+      <p class="text-[10px] text-slate-600 mt-0.5">v0.1.0-alpha</p>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="flex-1 px-2.5 py-3 overflow-y-auto space-y-0.5">
+
+    <button onclick="nav('dashboard')" data-page="dashboard"
+      class="nav-link w-full text-left active">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+      </svg>
+      Dashboard
+    </button>
+
+    <div class="pt-4 pb-1 px-3">
+      <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Contenu</span>
+    </div>
+
+    <button onclick="nav('content-types')" data-page="content-types" class="nav-link w-full text-left">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+      </svg>
+      Types de contenu
+    </button>
+
+    <button onclick="nav('entries')" data-page="entries" class="nav-link w-full text-left">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 11.414V19a2 2 0 01-2 2z"/>
+      </svg>
+      Entrées
+    </button>
+
+    <button onclick="nav('media')" data-page="media" class="nav-link w-full text-left">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      Médias
+    </button>
+
+    <div class="pt-4 pb-1 px-3">
+      <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Développeur</span>
+    </div>
+
+    <button onclick="nav('api-keys')" data-page="api-keys" class="nav-link w-full text-left">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+      </svg>
+      Clés API
+    </button>
+
+    <button onclick="nav('api-docs')" data-page="api-docs" class="nav-link w-full text-left">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+      </svg>
+      Référence API
+    </button>
+
+    <div class="pt-4 pb-1 px-3">
+      <span class="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Compte</span>
+    </div>
+
+    <button onclick="nav('settings')" data-page="settings" class="nav-link w-full text-left">
+      <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      Paramètres
+    </button>
+  </nav>
+
+  <!-- User -->
+  <div class="px-2.5 py-3 border-t border-[#21262d] shrink-0">
+    <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg group">
+      <div id="user-avatar" class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white text-xs font-semibold shrink-0 shadow">?</div>
+      <div class="flex-1 min-w-0">
+        <p id="user-name" class="text-[12px] font-medium text-slate-300 truncate leading-none">…</p>
+        <p id="user-email" class="text-[11px] text-slate-600 truncate mt-0.5">…</p>
+      </div>
+      <button onclick="logout()" title="Déconnexion"
+        class="text-slate-600 hover:text-red-400 transition-colors shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════════════════════ -->
+<div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+
+  <!-- Topbar -->
+  <header class="h-14 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
+    <div class="flex items-center gap-2 text-sm">
+      <span class="text-slate-400 text-xs">Mutane</span>
+      <svg class="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+      <span id="page-breadcrumb" class="font-medium text-slate-900 text-[13px]">Dashboard</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <div id="topbar-actions"></div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <main class="flex-1 overflow-y-auto" id="page-content">
+    <div class="flex items-center justify-center h-full">
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-sm text-slate-400">Chargement…</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL
+═══════════════════════════════════════════════════════════════ -->
+<div id="modal-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.55);backdrop-filter:blur(4px)">
+  <div id="modal-box" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-y-auto slide-up">
+    <div id="modal-inner"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TOAST
+═══════════════════════════════════════════════════════════════ -->
+<div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCRIPT
+═══════════════════════════════════════════════════════════════ -->
+<script>
+// ─── Auth ───────────────────────────────────────────────────────────────────
+const tkn = () => localStorage.getItem('mutane_token');
+const ah = () => ({ 'Content-Type':'application/json', Authorization:`Bearer ${tkn()}` });
+
+async function api(path, opts={}) {
+  const r = await fetch(path, { ...opts, headers:{ ...ah(), ...(opts.headers||{}) } });
+  if (r.status===401) { logout(); return null; }
+  return r;
+}
+
+function logout() {
+  localStorage.removeItem('mutane_token');
+  fetch('/api/auth/logout',{method:'POST'}).finally(()=>location.href='/login');
+}
+
+// ─── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const colors = { success:'bg-slate-900 text-white', error:'bg-red-600 text-white', info:'bg-indigo-600 text-white' };
+  const icons = {
+    success:`<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>`,
+    error:`<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>`,
+    info:`<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>`
+  };
+  const el = document.createElement('div');
+  el.className = `pointer-events-auto flex items-center gap-3 ${colors[type]} text-sm font-medium px-4 py-3 rounded-xl shadow-lg slide-up max-w-xs`;
+  el.innerHTML = `${icons[type]}<span>${esc(msg)}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), 3500);
+}
+
+// ─── Router ─────────────────────────────────────────────────────────────────
+const PAGES = {
+  dashboard:renderDashboard, 'content-types':renderContentTypes,
+  entries:renderEntries, media:renderMedia,
+  'api-keys':renderAPIKeys, 'api-docs':renderAPIDocs, settings:renderSettings
+};
+const TITLES = {
+  dashboard:'Dashboard','content-types':'Types de contenu',
+  entries:'Entrées', media:'Médias',
+  'api-keys':'Clés API','api-docs':'Référence API', settings:'Paramètres'
+};
+
+function nav(page, extra={}) {
+  document.querySelectorAll('[data-page]').forEach(el=>el.classList.remove('active'));
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  document.getElementById('page-breadcrumb').textContent = TITLES[page]||page;
+  document.getElementById('topbar-actions').innerHTML = '';
+  if(PAGES[page]) PAGES[page](extra);
+  history.pushState({page,extra},'',`#${page}`);
+}
+
+// ─── Skeleton helper ─────────────────────────────────────────────────────────
+function skeletonRows(n=5) {
+  return `<div class="p-6 space-y-3">${Array(n).fill(`<div class="h-10 skeleton rounded-xl"></div>`).join('')}</div>`;
+}
+function loader() {
+  return `<div class="flex items-center justify-center py-20">
+    <div class="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>`;
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+function empty(icon, title, desc, action='') {
+  return `<div class="flex flex-col items-center justify-center py-20 text-center">
+    <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4 text-slate-400">${icon}</div>
+    <p class="text-sm font-semibold text-slate-700 mb-1">${title}</p>
+    <p class="text-xs text-slate-400 max-w-xs leading-relaxed mb-4">${desc}</p>
+    ${action}
+  </div>`;
+}
+
+// ─── Badge ───────────────────────────────────────────────────────────────────
+function badge(text, color='slate') {
+  const c = { slate:'bg-slate-100 text-slate-600', green:'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20',
+              indigo:'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20',
+              red:'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20' };
+  return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c[color]||c.slate}">${text}</span>`;
+}
+
+// ─── Page wrapper ────────────────────────────────────────────────────────────
+function setContent(html) {
+  const el = document.getElementById('page-content');
+  el.innerHTML = `<div class="fade-in p-6 max-w-6xl mx-auto">${html}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+async function renderDashboard() {
+  setContent(skeletonRows(3));
+  const r = await api('/api/stats'); if(!r) return;
+  const s = await r.json();
+
+  setContent(`
+    <div class="mb-6">
+      <h1 class="text-xl font-bold text-slate-900">Bonjour 👋</h1>
+      <p class="text-sm text-slate-500 mt-0.5">Voici un aperçu de votre CMS</p>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      ${dCard('Types de contenu', s.content_types, 'indigo', `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>`)}
+      ${dCard('Entrées', s.entries, 'violet', `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 11.414V19a2 2 0 01-2 2z"/></svg>`)}
+      ${dCard('Médias', s.media, 'sky', `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`)}
+      ${dCard('Utilisateurs', s.users, 'emerald', `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>`)}
+    </div>
+
+    <!-- Quick start -->
+    <div class="grid lg:grid-cols-2 gap-4">
+      <div class="bg-white border border-slate-100 rounded-2xl p-6">
+        <h3 class="text-sm font-semibold text-slate-800 mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Démarrage rapide
+        </h3>
+        <ol class="space-y-3">
+          ${['Créer un type de contenu (ex: Articles)','Ajouter des champs dans le builder','Créer des entrées de contenu','Générer une clé API et consommer /v1/{slug}']
+            .map((t,i)=>`<li class="flex items-start gap-3 text-sm text-slate-600">
+              <span class="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">${i+1}</span>
+              ${t}</li>`).join('')}
+        </ol>
+      </div>
+      <div class="bg-[#0d1117] border border-[#21262d] rounded-2xl p-6">
+        <h3 class="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+          Exemple d'appel API
+        </h3>
+        <pre class="text-[11px] text-emerald-300 leading-relaxed overflow-x-auto"><code>curl ${location.origin}/v1/articles \\
+  -H "X-API-Key: mut_xxxx"</code></pre>
+        <div class="mt-4 h-px bg-[#21262d]"></div>
+        <pre class="text-[11px] text-slate-400 leading-relaxed mt-4 overflow-x-auto"><code>{
+  "data": [ { "id":1, "titre":"Mon article" } ],
+  "meta": { "total":1, "page":1, "limit":20 }
+}</code></pre>
+      </div>
+    </div>`);
+}
+
+function dCard(label, val, color, icon) {
+  const cfg = {
+    indigo: { bg:'bg-indigo-50', text:'text-indigo-600', border:'border-indigo-100' },
+    violet: { bg:'bg-violet-50', text:'text-violet-600', border:'border-violet-100' },
+    sky:    { bg:'bg-sky-50',    text:'text-sky-600',    border:'border-sky-100'    },
+    emerald:{ bg:'bg-emerald-50',text:'text-emerald-600',border:'border-emerald-100' },
+  }[color];
+  return `
+    <div class="bg-white border border-slate-100 rounded-2xl p-5 flex items-start justify-between">
+      <div>
+        <p class="text-2xl font-bold text-slate-900 leading-none">${val??'—'}</p>
+        <p class="text-xs text-slate-500 mt-1.5">${label}</p>
+      </div>
+      <div class="w-9 h-9 rounded-xl ${cfg.bg} ${cfg.text} ${cfg.border} border flex items-center justify-center shrink-0">${icon}</div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CONTENT TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+async function renderContentTypes() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<button onclick="openNewCTModal()" class="btn-primary text-xs gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+      Nouveau type
+    </button>`;
+  setContent(skeletonRows());
+  const r = await api('/api/content-types'); if(!r) return;
+  const types = await r.json() ?? [];
+
+  if(!types?.length) {
+    setContent(empty(
+      `<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>`,
+      'Aucun type de contenu',
+      'Créez votre premier type pour commencer à modéliser votre contenu.',
+      `<button onclick="openNewCTModal()" class="btn-primary text-xs">+ Nouveau type</button>`
+    ));
+    return;
+  }
+
+  setContent(`
+    <div class="flex items-center justify-between mb-5">
+      <p class="text-sm text-slate-500">${types.length} type${types.length>1?'s':''}</p>
+    </div>
+    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-100">
+            <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Nom</th>
+            <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Slug</th>
+            <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Champs</th>
+            <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Endpoint</th>
+            <th class="px-5 py-3.5"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          ${types.map(ct=>`
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+              <td class="px-5 py-3.5">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 text-xs font-bold shrink-0">
+                    ${esc(ct.name[0]?.toUpperCase())}
+                  </div>
+                  <span class="text-sm font-medium text-slate-900">${esc(ct.name)}</span>
+                </div>
+              </td>
+              <td class="px-5 py-3.5"><code class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">${esc(ct.slug)}</code></td>
+              <td class="px-5 py-3.5">${badge(ct.fields?.length??0+' champs')}</td>
+              <td class="px-5 py-3.5"><code class="text-xs text-slate-400">/v1/${esc(ct.slug)}</code></td>
+              <td class="px-5 py-3.5">
+                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onclick="openBuilderModal(${ct.id},'${esc(ct.name)}')" class="btn-ghost text-xs">Champs</button>
+                  <button onclick="openEntries(${ct.id},'${esc(ct.name)}')" class="btn-ghost text-xs">Entrées</button>
+                  <button onclick="deleteCT(${ct.id})"
+                    class="px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">Suppr.</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`);
+}
+
+function openNewCTModal() {
+  modal(`
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-slate-900">Nouveau type de contenu</h3>
+          <p class="text-xs text-slate-400">Définissez la structure de votre contenu</p>
+        </div>
+      </div>
+      <form id="ct-form" class="space-y-4">
+        <div>
+          <label class="form-label">Nom <span class="text-red-400">*</span></label>
+          <input name="name" id="ct-name" required class="form-input" placeholder="ex: Articles"
+            oninput="document.getElementById('ct-slug').value=slugify(this.value)"/>
+        </div>
+        <div>
+          <label class="form-label">Slug API</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">/v1/</span>
+            <input name="slug" id="ct-slug" required class="form-input pl-10 font-mono" placeholder="articles"/>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Description</label>
+          <input name="description" class="form-input" placeholder="Optionnel"/>
+        </div>
+        <div class="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary">Créer le type</button>
+        </div>
+      </form>
+    </div>`);
+
+  document.getElementById('ct-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const r = await api('/api/content-types',{method:'POST',body:JSON.stringify(Object.fromEntries(fd))});
+    if(r?.ok) { closeModal(); toast('Type créé !'); renderContentTypes(); }
+    else toast((await r?.json())?.error??'Erreur','error');
+  };
+}
+
+async function deleteCT(id) {
+  if(!confirm('Supprimer ce type et toutes ses entrées ?')) return;
+  const r = await api(`/api/content-types/${id}`,{method:'DELETE'});
+  if(r?.ok) { toast('Type supprimé'); renderContentTypes(); }
+  else toast('Erreur','error');
+}
+
+// ─── Builder ─────────────────────────────────────────────────────────────────
+const FIELD_LABELS = { text:'Texte',richtext:'Texte riche',number:'Nombre',boolean:'Booléen',date:'Date',media:'Média',relation:'Relation' };
+const FIELD_COLORS = { text:'slate',richtext:'violet',number:'sky',boolean:'amber',date:'rose',media:'emerald' };
+
+async function openBuilderModal(ctID, ctName) {
+  modal(`
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h3 class="text-base font-semibold text-slate-900">Builder de champs</h3>
+          <p class="text-xs text-slate-400 mt-0.5">${esc(ctName)}</p>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="fields-list" class="space-y-2 min-h-[60px] mb-5">${loader()}</div>
+      <div class="border-t border-slate-100 pt-4">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Ajouter un champ</p>
+        <form id="field-form" class="grid grid-cols-2 gap-3">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="form-label">Nom *</label>
+            <input name="name" required class="form-input text-sm" placeholder="ex: titre"/>
+          </div>
+          <div>
+            <label class="form-label">Type</label>
+            <select name="type" class="form-input text-sm">
+              <option value="text">Texte court</option>
+              <option value="richtext">Texte riche</option>
+              <option value="number">Nombre</option>
+              <option value="boolean">Booléen</option>
+              <option value="date">Date</option>
+              <option value="media">Média</option>
+            </select>
+          </div>
+          <div class="col-span-2 flex items-center justify-between">
+            <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+              <input type="checkbox" name="required" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"/>
+              Champ obligatoire
+            </label>
+            <button type="submit" class="btn-primary text-sm">+ Ajouter</button>
+          </div>
+        </form>
+      </div>
+    </div>`);
+
+  await loadFields(ctID);
+
+  document.getElementById('field-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const r = await api(`/api/content-types/${ctID}/fields`,{method:'POST',body:JSON.stringify({name:fd.get('name'),type:fd.get('type'),required:fd.has('required')})});
+    if(r?.ok) { e.target.reset(); await loadFields(ctID); toast('Champ ajouté'); }
+    else toast((await r?.json())?.error??'Erreur','error');
+  };
+}
+
+async function loadFields(ctID) {
+  const r = await api(`/api/content-types/${ctID}`);
+  const ct = await r?.json();
+  const c = document.getElementById('fields-list');
+  if(!ct?.fields?.length) {
+    c.innerHTML = `<div class="text-center py-4 text-sm text-slate-400 bg-slate-50 rounded-xl">Aucun champ — ajoutez-en un ci-dessous</div>`;
+    return;
+  }
+  c.innerHTML = ct.fields.map(f=>`
+    <div class="flex items-center justify-between bg-slate-50 hover:bg-slate-100 rounded-xl px-3.5 py-2.5 transition-colors">
+      <div class="flex items-center gap-2.5">
+        ${badge(FIELD_LABELS[f.type]??f.type, FIELD_COLORS[f.type]??'slate')}
+        <span class="text-sm font-medium text-slate-800">${esc(f.name)}</span>
+        ${f.required?`<span class="text-[10px] text-red-400 font-medium">requis</span>`:''}
+      </div>
+      <button onclick="deleteField(${ctID},${f.id})"
+        class="text-slate-300 hover:text-red-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </button>
+    </div>`).join('');
+}
+
+async function deleteField(ctID, fid) {
+  await api(`/api/content-types/${ctID}/fields/${fid}`,{method:'DELETE'});
+  await loadFields(ctID);
+  toast('Champ supprimé');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ENTRIES
+// ═══════════════════════════════════════════════════════════════════════════════
+let currentCT = null;
+
+function openEntries(id, name) {
+  currentCT = {id,name};
+  nav('entries');
+}
+
+async function renderEntries() {
+  setContent(skeletonRows());
+  const r = await api('/api/content-types'); if(!r) return;
+  const types = await r.json()??[];
+  if(!types.length) {
+    setContent(empty(`<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 11.414V19a2 2 0 01-2 2z"/></svg>`,
+      'Aucun type de contenu','Créez d\'abord un type pour pouvoir ajouter des entrées.'));
+    return;
+  }
+  if(!currentCT) currentCT = types[0];
+
+  document.getElementById('topbar-actions').innerHTML =
+    `<button onclick="openEntryEditor(null)" class="btn-primary text-xs gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+      Nouvelle entrée
+    </button>`;
+
+  setContent(`
+    <div class="flex items-center gap-3 mb-5 flex-wrap">
+      <div class="flex items-center gap-2 flex-1">
+        <label class="text-xs text-slate-500 shrink-0">Type :</label>
+        <select id="ct-select" onchange="changeCT(this)" class="form-input text-sm w-52">
+          ${types.map(t=>`<option value="${t.id}" data-name="${esc(t.name)}" ${currentCT?.id==t.id?'selected':''}>${esc(t.name)}</option>`).join('')}
+        </select>
+      </div>
+      <p id="entries-count" class="text-xs text-slate-400"></p>
+    </div>
+    <div id="entries-table">${loader()}</div>`);
+
+  await loadEntriesTable(currentCT.id);
+}
+
+function changeCT(sel) {
+  currentCT = {id:parseInt(sel.value),name:sel.selectedOptions[0]?.dataset.name};
+  loadEntriesTable(currentCT.id);
+}
+
+async function loadEntriesTable(ctID) {
+  const r = await api(`/api/content-types/${ctID}/entries`);
+  const entries = await r?.json()??[];
+  document.getElementById('entries-count').textContent = `${entries.length} entrée${entries.length>1?'s':''}`;
+  const c = document.getElementById('entries-table');
+  if(!entries.length) {
+    c.innerHTML = empty(`<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 11.414V19a2 2 0 01-2 2z"/></svg>`,
+      'Aucune entrée',`Créez votre première entrée ${currentCT?.name?'dans "'+esc(currentCT.name)+'"':''}.`,
+      `<button onclick="openEntryEditor(null)" class="btn-primary text-xs">+ Nouvelle entrée</button>`);
+    return;
+  }
+  const keys = Object.keys(entries[0]?.data??{}).slice(0,3);
+  c.innerHTML = `
+    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-slate-100">
+            <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide w-14">#</th>
+            ${keys.map(k=>`<th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">${esc(k)}</th>`).join('')}
+            <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Statut</th>
+            <th class="px-5 py-3.5 w-32"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          ${entries.map(e=>`
+            <tr class="hover:bg-slate-50/80 transition-colors group">
+              <td class="px-5 py-3.5 text-xs text-slate-400 font-mono">${e.id}</td>
+              ${keys.map(k=>`<td class="px-5 py-3.5 text-sm text-slate-700 max-w-[180px] truncate">${esc(String(e.data?.[k]??'—'))}</td>`).join('')}
+              <td class="px-5 py-3.5">
+                ${e.published_at
+                  ? badge('Publié','green')
+                  : badge('Brouillon','slate')}
+              </td>
+              <td class="px-5 py-3.5">
+                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onclick="openEntryEditor(${e.id})" class="btn-ghost text-xs">Éditer</button>
+                  <button onclick="deleteEntry(${ctID},${e.id})"
+                    class="px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors">✕</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function openEntryEditor(entryID) {
+  if(!currentCT) return;
+  modal(`<div class="p-6">${loader()}</div>`);
+  const ctR = await api(`/api/content-types/${currentCT.id}`);
+  const ct = await ctR?.json();
+  let entry = {data:{}};
+  if(entryID) { const r=await api(`/api/content-types/${currentCT.id}/entries/${entryID}`); entry=await r?.json()??entry; }
+
+  const FT = {text:'text',number:'number',boolean:'checkbox',date:'date',richtext:'text',media:'text'};
+  document.getElementById('modal-inner').innerHTML = `
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold">${entryID?'Modifier':'Nouvelle'} entrée</h3>
+          <p class="text-xs text-slate-400">${esc(ct.name)}</p>
+        </div>
+      </div>
+      <form id="entry-form" class="space-y-4">
+        ${(ct.fields??[]).map(f=>`
+          <div>
+            <label class="form-label">${esc(f.name)}${f.required?' <span class="text-red-400">*</span>':''}</label>
+            ${f.type==='richtext'
+              ?`<textarea name="${esc(f.name)}" class="form-input text-sm min-h-[100px]" ${f.required?'required':''}>${esc(entry.data?.[f.name]??'')}</textarea>`
+              :f.type==='boolean'
+              ?`<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="${esc(f.name)}" ${entry.data?.[f.name]?'checked':''} class="rounded border-slate-300 text-indigo-600 w-4 h-4"/><span class="text-sm text-slate-600">${esc(f.name)}</span></label>`
+              :`<input name="${esc(f.name)}" type="${FT[f.type]??'text'}" ${f.required?'required':''}
+                 value="${esc(String(entry.data?.[f.name]??''))}" class="form-input text-sm"/>`}
+          </div>`).join('')}
+        <div class="flex items-center gap-2.5 py-2 px-3.5 bg-slate-50 rounded-xl">
+          <input type="checkbox" id="pub" class="rounded border-slate-300 text-emerald-600 w-4 h-4 focus:ring-emerald-500" ${entry.published_at?'checked':''}/>
+          <div>
+            <label for="pub" class="text-sm font-medium text-slate-700 cursor-pointer">Publier cette entrée</label>
+            <p class="text-xs text-slate-400">Disponible via l'API publique /v1/</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary">${entryID?'Enregistrer':'Créer l\'entrée'}</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.getElementById('entry-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = {};
+    ct.fields?.forEach(f=>{
+      if(f.type==='boolean') data[f.name]=fd.has(f.name);
+      else if(f.type==='number') data[f.name]=parseFloat(fd.get(f.name))||0;
+      else data[f.name]=fd.get(f.name)??'';
+    });
+    const body = {data, published_at: document.getElementById('pub').checked?new Date().toISOString():null};
+    const url = entryID?`/api/content-types/${currentCT.id}/entries/${entryID}`:`/api/content-types/${currentCT.id}/entries`;
+    const r = await api(url,{method:entryID?'PUT':'POST',body:JSON.stringify(body)});
+    if(r?.ok) { closeModal(); toast(entryID?'Entrée mise à jour':'Entrée créée !'); await loadEntriesTable(currentCT.id); }
+    else toast((await r?.json())?.error??'Erreur','error');
+  };
+}
+
+async function deleteEntry(ctID, id) {
+  if(!confirm('Supprimer cette entrée ?')) return;
+  await api(`/api/content-types/${ctID}/entries/${id}`,{method:'DELETE'});
+  toast('Entrée supprimée');
+  await loadEntriesTable(ctID);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MEDIA
+// ═══════════════════════════════════════════════════════════════════════════════
+async function renderMedia() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<label class="btn-primary text-xs gap-1.5 cursor-pointer">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      Uploader
+      <input type="file" class="hidden" multiple onchange="uploadFiles(this.files)"/>
+    </label>`;
+  setContent(loader());
+  const r = await api('/api/media'); if(!r) return;
+  const {data:items=[]} = await r.json();
+
+  setContent(`
+    <!-- Drop zone -->
+    <div id="drop-zone" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 mb-6 text-center
+         hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer"
+      onclick="document.getElementById('file-input-hidden').click()"
+      ondragover="event.preventDefault();this.classList.add('border-indigo-400','bg-indigo-50/30')"
+      ondragleave="this.classList.remove('border-indigo-400','bg-indigo-50/30')"
+      ondrop="event.preventDefault();this.classList.remove('border-indigo-400','bg-indigo-50/30');uploadFiles(event.dataTransfer.files)">
+      <input type="file" id="file-input-hidden" class="hidden" multiple onchange="uploadFiles(this.files)"/>
+      <svg class="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24">
+        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+      </svg>
+      <p class="text-sm text-slate-500">Glissez vos fichiers ici ou <span class="text-indigo-600 font-medium">parcourir</span></p>
+      <p class="text-xs text-slate-400 mt-1">PNG, JPG, SVG, PDF, MP4 — max 32 MB</p>
+    </div>
+
+    <!-- Grid -->
+    <div id="media-grid">
+      ${items.length
+        ? `<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">${items.map(mediaCard).join('')}</div>`
+        : empty(`<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`,
+          'Aucun média','Uploadez votre première image ou fichier.')}
+    </div>`);
+}
+
+function mediaCard(m) {
+  const isImg = m.mime_type?.startsWith('image/');
+  const size = m.size > 1048576 ? (m.size/1048576).toFixed(1)+'MB' : Math.round(m.size/1024)+'KB';
+  return `
+    <div class="group relative bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm aspect-square flex flex-col">
+      <div class="flex-1 overflow-hidden bg-slate-50 flex items-center justify-center">
+        ${isImg
+          ?`<img src="${esc(m.url)}" alt="${esc(m.original_name)}" class="w-full h-full object-cover"/>`
+          :`<div class="flex flex-col items-center gap-1 p-2">
+              <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              <p class="text-[10px] text-slate-400 text-center truncate w-full px-1">${esc(m.original_name)}</p>
+            </div>`}
+      </div>
+      <div class="px-2 py-1.5 border-t border-slate-100">
+        <p class="text-[10px] text-slate-500 truncate">${esc(m.original_name)}</p>
+        <p class="text-[10px] text-slate-400">${size}</p>
+      </div>
+      <!-- Hover overlay -->
+      <div class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-3">
+        <button onclick="copyTxt('${esc(m.url)}')" class="w-full text-[11px] font-medium bg-white/20 hover:bg-white/30 text-white rounded-lg px-2 py-1.5 transition-colors">Copier l'URL</button>
+        <button onclick="deleteMedia(${m.id})" class="w-full text-[11px] font-medium bg-red-500/80 hover:bg-red-500 text-white rounded-lg px-2 py-1.5 transition-colors">Supprimer</button>
+      </div>
+    </div>`;
+}
+
+async function uploadFiles(files) {
+  toast(`Upload de ${files.length} fichier${files.length>1?'s':''}…`,'info');
+  for(const f of files) {
+    const fd = new FormData(); fd.append('file',f);
+    await fetch('/api/media/upload',{method:'POST',headers:{Authorization:`Bearer ${tkn()}`},body:fd});
+  }
+  toast('Upload terminé !');
+  renderMedia();
+}
+
+async function deleteMedia(id) {
+  if(!confirm('Supprimer ce média ?')) return;
+  await api(`/api/media/${id}`,{method:'DELETE'});
+  toast('Média supprimé');
+  renderMedia();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  API KEYS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function renderAPIKeys() {
+  document.getElementById('topbar-actions').innerHTML =
+    `<button onclick="openNewKeyModal()" class="btn-primary text-xs gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+      Nouvelle clé
+    </button>`;
+  setContent(skeletonRows(3));
+  const r = await api('/api/keys'); if(!r) return;
+  const keys = await r.json()??[];
+
+  setContent(`
+    <div class="bg-[#0d1117] border border-[#21262d] rounded-2xl p-5 mb-6 flex items-start gap-4">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      </div>
+      <div>
+        <p class="text-sm font-medium text-slate-200 mb-1">Utilisation de l'API publique</p>
+        <pre class="text-[11px] text-emerald-300 leading-relaxed overflow-x-auto">curl ${location.origin}/v1/<span class="text-slate-400">{slug}</span> -H <span class="text-amber-300">"X-API-Key: mut_xxxx"</span></pre>
+        <p class="text-xs text-slate-500 mt-1.5">Les clés donnent un accès en lecture aux entrées publiées.</p>
+      </div>
+    </div>
+    ${keys.length
+      ? `<div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+          <table class="w-full">
+            <thead><tr class="border-b border-slate-100">
+              <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Nom</th>
+              <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Préfixe</th>
+              <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Dernière utilisation</th>
+              <th class="text-left px-5 py-3.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Créée le</th>
+              <th class="px-5 py-3.5"></th>
+            </tr></thead>
+            <tbody class="divide-y divide-slate-50">
+              ${keys.map(k=>`
+                <tr class="hover:bg-slate-50/80 transition-colors group">
+                  <td class="px-5 py-3.5 text-sm font-medium">${esc(k.name)}</td>
+                  <td class="px-5 py-3.5"><code class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">${esc(k.prefix)}…</code></td>
+                  <td class="px-5 py-3.5 text-xs text-slate-500">${k.last_used_at?new Date(k.last_used_at).toLocaleDateString('fr'):'—'}</td>
+                  <td class="px-5 py-3.5 text-xs text-slate-500">${new Date(k.created_at).toLocaleDateString('fr')}</td>
+                  <td class="px-5 py-3.5 text-right">
+                    <button onclick="revokeKey(${k.id})"
+                      class="opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium text-red-500 hover:bg-red-50 px-2.5 py-1.5 rounded-lg">
+                      Révoquer
+                    </button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`
+      : empty(`<svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>`,
+        'Aucune clé API','Créez une clé pour accéder à votre contenu depuis vos applications.',
+        `<button onclick="openNewKeyModal()" class="btn-primary text-xs">+ Nouvelle clé</button>`)}
+  `);
+}
+
+function openNewKeyModal() {
+  modal(`
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold">Créer une clé API</h3>
+          <p class="text-xs text-slate-400">La clé ne sera affichée qu'une seule fois</p>
+        </div>
+      </div>
+      <form id="key-form" class="space-y-4">
+        <div>
+          <label class="form-label">Nom de la clé *</label>
+          <input name="name" required class="form-input" placeholder="ex: Frontend production"/>
+        </div>
+        <div class="flex justify-end gap-2.5">
+          <button type="button" onclick="closeModal()" class="btn-secondary">Annuler</button>
+          <button type="submit" class="btn-primary">Générer la clé</button>
+        </div>
+      </form>
+      <div id="key-result" class="hidden mt-5 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          <p class="text-sm font-semibold text-emerald-700">Clé créée — copiez-la maintenant !</p>
+        </div>
+        <div class="bg-white border border-emerald-100 rounded-lg px-3 py-2.5 flex items-center justify-between gap-2">
+          <code id="key-value" class="text-xs text-emerald-800 break-all flex-1"></code>
+          <button onclick="copyTxt(document.getElementById('key-value').textContent)" class="shrink-0 text-emerald-600 hover:text-emerald-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>`);
+
+  document.getElementById('key-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const r = await api('/api/keys',{method:'POST',body:JSON.stringify({name:fd.get('name')})});
+    if(r?.ok) {
+      const d = await r.json();
+      document.getElementById('key-value').textContent = d.plaintext;
+      document.getElementById('key-result').classList.remove('hidden');
+      e.target.querySelectorAll('input,button[type=submit]').forEach(el=>el.disabled=true);
+      renderAPIKeys();
+    } else toast((await r?.json())?.error??'Erreur','error');
+  };
+}
+
+async function revokeKey(id) {
+  if(!confirm('Révoquer cette clé ? Elle cessera immédiatement de fonctionner.')) return;
+  await api(`/api/keys/${id}`,{method:'DELETE'});
+  toast('Clé révoquée');
+  renderAPIKeys();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  API DOCS
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderAPIDocs() {
+  const base = location.origin;
+  setContent(`
+    <div class="max-w-3xl space-y-5">
+      <div>
+        <h2 class="text-base font-semibold text-slate-900 mb-1">Référence API</h2>
+        <p class="text-sm text-slate-500">Tous les endpoints disponibles pour votre CMS.</p>
+      </div>
+
+      ${apiSection('Authentification','',[
+        ['POST','/api/auth/register','Créer un compte','Aucune','{ email, password, name }'],
+        ['POST','/api/auth/login','Connexion','Aucune','{ email, password, totp_code? }'],
+        ['POST','/api/auth/logout','Déconnexion','Session cookie','—'],
+      ])}
+
+      ${apiSection('API Admin (Bearer Token)',`<span class="text-xs bg-amber-50 text-amber-600 border border-amber-100 px-2 py-0.5 rounded">Authorization: Bearer &lt;token&gt;</span>`,[
+        ['GET','/api/me','Profil utilisateur','Bearer','—'],
+        ['GET','/api/stats','Statistiques dashboard','Bearer','—'],
+        ['GET','/api/content-types','Lister les types','Bearer','—'],
+        ['POST','/api/content-types','Créer un type','Bearer','{ name, slug, description }'],
+        ['GET','/api/content-types/{id}','Détail d\'un type','Bearer','—'],
+        ['DELETE','/api/content-types/{id}','Supprimer un type','Bearer','—'],
+        ['POST','/api/content-types/{id}/fields','Ajouter un champ','Bearer','{ name, type, required }'],
+        ['DELETE','/api/content-types/{id}/fields/{fid}','Supprimer un champ','Bearer','—'],
+        ['GET','/api/content-types/{id}/entries','Lister les entrées','Bearer','—'],
+        ['POST','/api/content-types/{id}/entries','Créer une entrée','Bearer','{ data, published_at? }'],
+        ['PUT','/api/content-types/{id}/entries/{eid}','Modifier une entrée','Bearer','{ data, published_at? }'],
+        ['DELETE','/api/content-types/{id}/entries/{eid}','Supprimer une entrée','Bearer','—'],
+        ['GET','/api/media','Lister les médias','Bearer','—'],
+        ['POST','/api/media/upload','Uploader un fichier','Bearer','multipart/form-data'],
+        ['DELETE','/api/media/{id}','Supprimer un média','Bearer','—'],
+        ['GET','/api/keys','Lister les clés API','Bearer','—'],
+        ['POST','/api/keys','Créer une clé API','Bearer','{ name }'],
+        ['DELETE','/api/keys/{id}','Révoquer une clé','Bearer','—'],
+      ])}
+
+      ${apiSection('API Publique v1 (Clé API)',`<span class="text-xs bg-emerald-50 text-emerald-600 border border-emerald-100 px-2 py-0.5 rounded">X-API-Key: mut_xxxx</span>`,[
+        ['GET','/v1/{slug}','Lister les entrées publiées','X-API-Key','?page=1&limit=20'],
+        ['GET','/v1/{slug}/{id}','Récupérer une entrée','X-API-Key','—'],
+        ['GET','/v1/media','Lister les médias','X-API-Key','?page=1&limit=50'],
+      ])}
+    </div>`);
+}
+
+function apiSection(title, subtitle, rows) {
+  const methodColor = { GET:'bg-sky-50 text-sky-700', POST:'bg-emerald-50 text-emerald-700', PUT:'bg-amber-50 text-amber-700', DELETE:'bg-red-50 text-red-700' };
+  return `
+    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-slate-800">${title}</h3>
+        ${subtitle}
+      </div>
+      <table class="w-full text-sm">
+        <tbody class="divide-y divide-slate-50">
+          ${rows.map(([method,path,desc])=>`
+            <tr class="hover:bg-slate-50/80 transition-colors">
+              <td class="pl-5 py-3 w-16">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${methodColor[method]||'bg-slate-100 text-slate-600'}">${method}</span>
+              </td>
+              <td class="px-4 py-3 w-72"><code class="text-xs text-slate-700">${esc(path)}</code></td>
+              <td class="px-4 py-3 text-xs text-slate-500">${desc}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function renderSettings() {
+  setContent(skeletonRows(3));
+  const r = await api('/api/me'); if(!r) return;
+  const u = await r.json()??{};
+
+  setContent(`
+    <div class="max-w-lg space-y-4">
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-slate-800">Profil</h3>
+        </div>
+        <div class="divide-y divide-slate-50">
+          ${row('Nom', esc(u.name||'—'))}
+          ${row('Email', esc(u.email||'—'))}
+          ${row('Rôle', u.is_admin?badge('Administrateur','indigo'):badge('Éditeur','slate'))}
+        </div>
+      </div>
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-slate-800">Endpoint API</h3>
+        </div>
+        <div class="px-5 py-4">
+          <p class="text-xs text-slate-500 mb-2">Base URL de votre API publique</p>
+          <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3.5 py-2.5">
+            <code class="text-xs text-slate-600 flex-1">${location.origin}/v1/{slug}</code>
+            <button onclick="copyTxt('${location.origin}/v1/{slug}')" class="text-slate-400 hover:text-indigo-600 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-sm font-semibold text-slate-800">Sécurité</h3>
+        </div>
+        <div class="px-5 py-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-slate-700">Authentification 2FA</p>
+              <p class="text-xs text-slate-400 mt-0.5">Renforcez l'accès avec TOTP</p>
+            </div>
+            <button onclick="setup2FA()" class="btn-secondary text-xs">Configurer</button>
+          </div>
+        </div>
+      </div>
+      <button onclick="logout()" class="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 border border-red-100 rounded-xl py-2.5 transition-colors font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Se déconnecter
+      </button>
+    </div>`);
+}
+
+function row(label, value) {
+  return `<div class="flex items-center justify-between px-5 py-3.5">
+    <span class="text-sm text-slate-500">${label}</span>
+    <span class="text-sm font-medium text-slate-800">${value}</span>
+  </div>`;
+}
+
+async function setup2FA() {
+  const r = await api('/api/auth/2fa/enable',{method:'POST'});
+  const d = await r?.json();
+  if(!d?.url) { toast('Erreur','error'); return; }
+  modal(`
+    <div class="p-6 text-center">
+      <div class="w-12 h-12 rounded-2xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-500 mx-auto mb-4">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      </div>
+      <h3 class="text-base font-semibold mb-1">Configurer le 2FA</h3>
+      <p class="text-sm text-slate-500 mb-4">Scannez ce QR code avec Google Authenticator ou Aegis</p>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(d.url)}" class="mx-auto rounded-xl border border-slate-100 mb-4 shadow-sm"/>
+      <div class="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 mb-5 flex items-center justify-between gap-2">
+        <code class="text-xs text-slate-600 break-all flex-1">${esc(d.secret)}</code>
+        <button onclick="copyTxt('${esc(d.secret)}')" class="text-slate-400 hover:text-indigo-600">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+      </div>
+      <button onclick="closeModal()" class="btn-primary w-full">Terminé</button>
+    </div>`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════════════════════════════
+function modal(html) {
+  document.getElementById('modal-inner').innerHTML = html;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+document.getElementById('modal-overlay').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal-overlay')) closeModal();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════════════════════
+function esc(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function slugify(s) { return s.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function copyTxt(t) { navigator.clipboard.writeText(t).then(()=>toast('Copié !')); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+async function init() {
+  if(!tkn()) { location.href='/login'; return; }
+  const r = await api('/api/me');
+  if(!r) return;
+  const u = await r.json();
+  document.getElementById('user-name').textContent = u.name||u.email;
+  document.getElementById('user-email').textContent = u.email;
+  document.getElementById('user-avatar').textContent = (u.name||u.email)?.[0]?.toUpperCase()||'?';
+  const hash = location.hash.replace('#','')||'dashboard';
+  nav(hash);
+}
+init();
+</script>
+
+<!-- ── Component styles ────────────────────────────────────────────────────── -->
+<style>
+  .btn-primary { @apply flex items-center bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold px-4 py-2 rounded-xl transition-all text-sm shadow-sm; }
+  .btn-secondary { @apply flex items-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-4 py-2 rounded-xl transition-colors text-sm; }
+  .btn-ghost { @apply px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg transition-colors; }
+  .form-label { @apply block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide; }
+  .form-input { @apply w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all bg-white; }
+</style>
+</body>
+</html>

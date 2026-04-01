@@ -1,0 +1,34 @@
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Env (ne jamais inclure dans l'image) ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Uploads (monté en volume, pas dans l'image) ───────────────────────────────
+uploads/
+
+# ── Node / Tailwind (build CSS fait en amont) ─────────────────────────────────
+node_modules/
+package-lock.json
+
+# ── Templ sources (les _templ.go générés suffisent) ──────────────────────────
+web/templates/*.templ
+
+# ── Tests & docs ──────────────────────────────────────────────────────────────
+**/*_test.go
+*.md
+docs/
+
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Docker files eux-mêmes ────────────────────────────────────────────────────
+Dockerfile
+docker-compose*.yml
+.dockerignore

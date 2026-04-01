@@ -1,0 +1,11 @@
+{
+  "name": "mutane",
+  "private": true,
+  "scripts": {
+    "css": "tailwindcss -i ./web/static/input.css -o ./web/static/output.css",
+    "css:watch": "tailwindcss -i ./web/static/input.css -o ./web/static/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

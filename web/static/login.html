@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mutane CMS — Connexion</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',500:'#6366f1',600:'#4f46e5',700:'#4338ca',900:'#312e81' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-bg {
+      background: linear-gradient(135deg, #0f0c29, #1a1040, #24243e);
+    }
+    .noise {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .float { animation: float 6s ease-in-out infinite; }
+    input:focus { outline: none; }
+  </style>
+</head>
+<body class="h-full flex font-sans">
+
+  <!-- LEFT — Branding -->
+  <div class="hidden lg:flex lg:w-[52%] gradient-bg noise flex-col justify-between p-12 relative overflow-hidden">
+
+    <!-- Decorative blobs -->
+    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-violet-600/20 blur-3xl pointer-events-none"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
+
+    <!-- Top logo -->
+    <div class="relative z-10 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+        </svg>
+      </div>
+      <span class="text-white font-semibold text-lg tracking-tight">Mutane CMS</span>
+    </div>
+
+    <!-- Center content -->
+    <div class="relative z-10 float">
+      <div class="inline-flex items-center gap-2 bg-white/10 border border-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-indigo-200 mb-6">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        Open Source Headless CMS
+      </div>
+      <h1 class="text-4xl font-bold text-white leading-tight mb-4">
+        Gérez votre contenu<br/>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-violet-300">sans contraintes</span>
+      </h1>
+      <p class="text-slate-400 text-base leading-relaxed max-w-sm mb-8">
+        Créez vos structures de contenu, gérez vos entrées et exposez votre API — tout depuis une interface claire et rapide.
+      </p>
+
+      <!-- Features -->
+      <div class="space-y-3">
+        <div class="flex items-center gap-3 text-sm text-slate-300">
+          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+            <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          Builder visuel de types de contenu
+        </div>
+        <div class="flex items-center gap-3 text-sm text-slate-300">
+          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+            <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          API REST sécurisée par clé API
+        </div>
+        <div class="flex items-center gap-3 text-sm text-slate-300">
+          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+            <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          Authentification 2FA TOTP
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="relative z-10">
+      <p class="text-slate-600 text-xs">Built with Go · PostgreSQL · Tailwind CSS</p>
+    </div>
+  </div>
+
+  <!-- RIGHT — Form -->
+  <div class="flex-1 flex items-center justify-center bg-white px-6 py-12">
+    <div class="w-full max-w-sm">
+
+      <!-- Mobile logo -->
+      <div class="flex items-center gap-2 mb-8 lg:hidden">
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <svg class="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+          </svg>
+        </div>
+        <span class="font-semibold text-slate-900">Mutane CMS</span>
+      </div>
+
+      <h2 class="text-2xl font-bold text-slate-900 mb-1">Bon retour 👋</h2>
+      <p class="text-sm text-slate-500 mb-8">Connectez-vous à votre espace admin</p>
+
+      <!-- Form -->
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="email">Adresse email</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <input id="email" name="email" type="email" required autocomplete="email" placeholder="admin@exemple.com"
+              class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400
+                     focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"/>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-sm font-medium text-slate-700" for="password">Mot de passe</label>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"
+              class="w-full border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm text-slate-900 placeholder-slate-400
+                     focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"/>
+            <button type="button" onclick="togglePwd()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+              <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2FA field (hidden) -->
+        <div id="totp-field" class="hidden">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="totp_code">
+            Code d'authentification (2FA)
+          </label>
+          <input id="totp_code" name="totp_code" type="text" inputmode="numeric" maxlength="6" placeholder="000 000"
+            class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-center tracking-[0.4em] text-slate-900 placeholder-slate-400
+                   focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-mono text-base"/>
+          <p class="text-xs text-slate-400 mt-1.5 text-center">Ouvrez votre application d'authentification</p>
+        </div>
+
+        <!-- Error -->
+        <div id="error-msg" class="hidden flex items-center gap-2.5 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl px-4 py-3">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+          </svg>
+          <span id="error-text"></span>
+        </div>
+
+        <button type="submit" id="submit-btn"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold
+                 py-2.5 rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-sm shadow-indigo-200 mt-2">
+          <svg id="btn-spinner" class="hidden animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span id="btn-label">Se connecter</span>
+          <svg id="btn-arrow" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </form>
+
+      <p class="text-center text-xs text-slate-400 mt-8">
+        Mutane CMS — Open Source &middot;
+        <a href="https://github.com" class="text-indigo-500 hover:text-indigo-700">GitHub</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    let totpStep = false;
+
+    function togglePwd() {
+      const input = document.getElementById('password');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('error-msg');
+      const errText = document.getElementById('error-text');
+      const spinner = document.getElementById('btn-spinner');
+      const btnLabel = document.getElementById('btn-label');
+      const btnArrow = document.getElementById('btn-arrow');
+
+      errEl.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      btnArrow.classList.add('hidden');
+      btnLabel.textContent = totpStep ? 'Vérification…' : 'Connexion…';
+      document.getElementById('submit-btn').disabled = true;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: e.target.email.value,
+            password: e.target.password.value,
+            totp_code: e.target.totp_code?.value ?? '',
+          }),
+        });
+        const data = await res.json();
+
+        if (data.totp_required && !totpStep) {
+          totpStep = true;
+          document.getElementById('totp-field').classList.remove('hidden');
+          document.getElementById('totp_code').focus();
+          btnLabel.textContent = 'Vérifier le code';
+          spinner.classList.add('hidden');
+          btnArrow.classList.remove('hidden');
+          document.getElementById('submit-btn').disabled = false;
+          return;
+        }
+
+        if (data.token) {
+          localStorage.setItem('mutane_token', data.token);
+          btnLabel.textContent = 'Redirection…';
+          window.location.href = '/admin/';
+        } else {
+          showErr(data.error ?? 'Identifiants incorrects');
+        }
+      } catch {
+        showErr('Erreur réseau, veuillez réessayer.');
+      }
+    });
+
+    function showErr(msg) {
+      const errEl = document.getElementById('error-msg');
+      document.getElementById('error-text').textContent = msg;
+      errEl.classList.remove('hidden');
+      document.getElementById('btn-spinner').classList.add('hidden');
+      document.getElementById('btn-arrow').classList.remove('hidden');
+      document.getElementById('btn-label').textContent = totpStep ? 'Vérifier le code' : 'Se connecter';
+      document.getElementById('submit-btn').disabled = false;
+    }
+  </script>
+</body>
+</html>
