@@ -5,13 +5,19 @@ import "time"
 type FieldType string
 
 const (
-	FieldTypeText     FieldType = "text"
-	FieldTypeRichText FieldType = "richtext"
-	FieldTypeNumber   FieldType = "number"
-	FieldTypeBoolean  FieldType = "boolean"
-	FieldTypeDate     FieldType = "date"
-	FieldTypeMedia    FieldType = "media"
-	FieldTypeRelation FieldType = "relation"
+	FieldTypeText        FieldType = "text"
+	FieldTypeBoolean     FieldType = "boolean"
+	FieldTypeRichText    FieldType = "richtext"    // Markdown
+	FieldTypeBlocks      FieldType = "blocks"      // Rich text JSON blocks
+	FieldTypeJSON        FieldType = "json"
+	FieldTypeNumber      FieldType = "number"
+	FieldTypeEmail       FieldType = "email"
+	FieldTypeDate        FieldType = "date"
+	FieldTypePassword    FieldType = "password"
+	FieldTypeMedia       FieldType = "media"
+	FieldTypeEnumeration FieldType = "enumeration"
+	FieldTypeRelation    FieldType = "relation"
+	FieldTypeUID         FieldType = "uid"
 )
 
 type Field struct {

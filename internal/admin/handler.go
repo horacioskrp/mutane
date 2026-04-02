@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+
+	"mutane/internal/ctxkey"
 )
 
 type Handler struct {
@@ -27,7 +29,7 @@ func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	userID, _ := r.Context().Value(userIDKey).(int64)
+	userID, _ := r.Context().Value(ctxkey.UserID).(int64)
 
 	var user struct {
 		ID      int64  `json:"id"`
@@ -52,6 +54,3 @@ func (h *Handler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
 
-type ctxKey string
-
-const userIDKey ctxKey = "userID"
