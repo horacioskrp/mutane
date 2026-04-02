@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mutane CMS — Setup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter','sans-serif'] },
+          colors: {
+            primary: { DEFAULT:'#021a42', light:'#e8edf5', dark:'#011230', mid:'#032d6b' },
+            secondary: { DEFAULT:'#f6245b', light:'#fde8ee', dark:'#d41a4e' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family:'Inter',sans-serif; }
+    input:focus { outline:none; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation:fadeUp .35s ease-out forwards; }
+    @keyframes scaleIn { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+    .scale-in { animation:scaleIn .3s ease-out forwards; }
+    .lang-card { transition: all .2s; }
+    .lang-card:hover { transform:translateY(-2px); }
+    .lang-card.selected { border-color:#021a42 !important; background:#e8edf5; }
+    .lang-card.selected .lang-check { opacity:1 !important; }
+    .step-line { transition: width .4s ease; }
+    .pw-bar div { transition: width .3s, background .3s; }
+  </style>
+</head>
+<body class="h-full bg-slate-50 flex items-center justify-center p-4">
+
+  <!-- Background decoration -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-secondary/5 blur-3xl"></div>
+  </div>
+
+  <div class="w-full max-w-lg relative">
+
+    <!-- Logo -->
+    <div class="flex items-center justify-center gap-2.5 mb-10">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style="background:#021a42">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+        </svg>
+      </div>
+      <span class="text-xl font-bold" style="color:#021a42">Mutane CMS</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="mb-8">
+      <div class="flex items-center gap-3 mb-3">
+        <div id="step-indicator" class="flex items-center gap-2"></div>
+        <span id="step-label" class="text-xs text-slate-400 ml-auto"></span>
+      </div>
+      <div class="h-1 bg-slate-100 rounded-full overflow-hidden">
+        <div id="progress-bar" class="h-full step-line rounded-full" style="background:#021a42;width:50%"></div>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div id="step-content"></div>
+    </div>
+
+    <p class="text-center text-xs text-slate-400 mt-6">
+      Mutane CMS — Open Source Headless CMS
+    </p>
+  </div>
+
+<!-- ═══════════════════════════════════════════════════════════ SCRIPT -->
+<script>
+// ── i18n ─────────────────────────────────────────────────────────────────────
+const T = {
+  en: {
+    step1_title: 'Choose your language',
+    step1_sub: 'You can change this later in settings',
+    step1_btn: 'Continue',
+    step2_title: 'Create your admin account',
+    step2_sub: 'This will be the main administrator of your CMS',
+    name_label: 'Full name',
+    name_ph: 'John Doe',
+    email_label: 'Email address',
+    email_ph: 'admin@example.com',
+    pwd_label: 'Password',
+    pwd_ph: 'Minimum 8 characters',
+    pwd_confirm_label: 'Confirm password',
+    pwd_confirm_ph: 'Repeat your password',
+    submit_btn: 'Create account & launch',
+    submitting: 'Creating account…',
+    pwd_weak: 'Too weak',
+    pwd_fair: 'Fair',
+    pwd_good: 'Good',
+    pwd_strong: 'Strong',
+    pwd_mismatch: 'Passwords do not match',
+    pwd_short: 'Password must be at least 8 characters',
+    success: 'Account created! Redirecting to login…',
+    step1_of: 'Step 1 of 2 — Language',
+    step2_of: 'Step 2 of 2 — Admin account',
+  },
+  fr: {
+    step1_title: 'Choisissez votre langue',
+    step1_sub: 'Vous pourrez la modifier dans les paramètres',
+    step1_btn: 'Continuer',
+    step2_title: 'Créez votre compte administrateur',
+    step2_sub: "Ce compte sera l'administrateur principal de votre CMS",
+    name_label: 'Nom complet',
+    name_ph: 'Jean Dupont',
+    email_label: 'Adresse email',
+    email_ph: 'admin@exemple.com',
+    pwd_label: 'Mot de passe',
+    pwd_ph: '8 caractères minimum',
+    pwd_confirm_label: 'Confirmer le mot de passe',
+    pwd_confirm_ph: 'Répétez votre mot de passe',
+    submit_btn: 'Créer le compte et démarrer',
+    submitting: 'Création du compte…',
+    pwd_weak: 'Trop faible',
+    pwd_fair: 'Acceptable',
+    pwd_good: 'Bien',
+    pwd_strong: 'Fort',
+    pwd_mismatch: 'Les mots de passe ne correspondent pas',
+    pwd_short: 'Le mot de passe doit faire au moins 8 caractères',
+    success: 'Compte créé ! Redirection vers la connexion…',
+    step1_of: 'Étape 1 sur 2 — Langue',
+    step2_of: 'Étape 2 sur 2 — Compte admin',
+  }
+};
+
+let lang = localStorage.getItem('mutane_lang') || 'fr';
+let step = 1;
+
+function t(k) { return T[lang]?.[k] || T.fr[k]; }
+
+// ── Step indicators ───────────────────────────────────────────────────────────
+function renderStepIndicator() {
+  const steps = [
+    { n:1, label: lang==='en'?'Language':'Langue' },
+    { n:2, label: lang==='en'?'Admin Account':'Compte admin' },
+  ];
+  document.getElementById('step-indicator').innerHTML = steps.map(s=>`
+    <div class="flex items-center gap-1.5">
+      <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step===s.n?'text-white shadow-sm':'text-slate-400 bg-slate-100'}"
+           style="${step===s.n?'background:#021a42':step>s.n?'background:#e8edf5;color:#021a42':''}">
+        ${step>s.n?'<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>':s.n}
+      </div>
+      <span class="text-xs font-medium ${step===s.n?'text-slate-800':'text-slate-400'} hidden sm:block">${s.label}</span>
+    </div>
+    ${s.n<steps.length?'<div class="w-6 h-px bg-slate-200 hidden sm:block"></div>':''}`
+  ).join('');
+  document.getElementById('step-label').textContent = step===1?t('step1_of'):t('step2_of');
+  document.getElementById('progress-bar').style.width = step===1?'50%':'100%';
+}
+
+// ── Step 1 — Language ─────────────────────────────────────────────────────────
+function renderStep1() {
+  renderStepIndicator();
+  document.getElementById('step-content').innerHTML = `
+    <div class="p-8 fade-up">
+      <div class="text-center mb-8">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl" style="background:#e8edf5">🌍</div>
+        <h2 class="text-xl font-bold mb-1" style="color:#021a42">${t('step1_title')}</h2>
+        <p class="text-sm text-slate-500">${t('step1_sub')}</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-8">
+        <!-- French -->
+        <button onclick="selectLang('fr')" id="card-fr"
+          class="lang-card border-2 border-slate-200 rounded-2xl p-5 text-left relative transition-all ${lang==='fr'?'selected':''}">
+          <div class="text-3xl mb-3">🇫🇷</div>
+          <p class="text-sm font-semibold text-slate-800">Français</p>
+          <p class="text-xs text-slate-500 mt-0.5">French</p>
+          <div class="lang-check absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center ${lang==='fr'?'opacity-100':'opacity-0'}"
+               style="background:#021a42">
+            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+        </button>
+
+        <!-- English -->
+        <button onclick="selectLang('en')" id="card-en"
+          class="lang-card border-2 border-slate-200 rounded-2xl p-5 text-left relative transition-all ${lang==='en'?'selected':''}">
+          <div class="text-3xl mb-3">🇬🇧</div>
+          <p class="text-sm font-semibold text-slate-800">English</p>
+          <p class="text-xs text-slate-500 mt-0.5">Anglais</p>
+          <div class="lang-check absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center ${lang==='en'?'opacity-100':'opacity-0'}"
+               style="background:#021a42">
+            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+        </button>
+      </div>
+
+      <button onclick="goStep2()"
+        class="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:opacity-80 flex items-center justify-center gap-2 shadow-sm"
+        style="background:#021a42">
+        ${t('step1_btn')}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>`;
+}
+
+function selectLang(l) {
+  lang = l;
+  localStorage.setItem('mutane_lang', l);
+  document.querySelectorAll('.lang-card').forEach(c => {
+    c.classList.remove('selected');
+    c.querySelector('.lang-check').style.opacity = '0';
+  });
+  const card = document.getElementById(`card-${l}`);
+  card.classList.add('selected');
+  card.querySelector('.lang-check').style.opacity = '1';
+}
+
+function goStep2() {
+  step = 2;
+  renderStep2();
+}
+
+// ── Step 2 — Admin account ────────────────────────────────────────────────────
+function renderStep2() {
+  renderStepIndicator();
+  document.getElementById('step-content').innerHTML = `
+    <div class="p-8 fade-up">
+      <div class="text-center mb-7">
+        <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl" style="background:#e8edf5">🔐</div>
+        <h2 class="text-xl font-bold mb-1" style="color:#021a42">${t('step2_title')}</h2>
+        <p class="text-sm text-slate-500">${t('step2_sub')}</p>
+      </div>
+
+      <form id="setup-form" class="space-y-4" onsubmit="submitSetup(event)" autocomplete="off">
+        <!-- Name -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide mb-1.5" style="color:#021a42">${t('name_label')}</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+              </svg>
+            </div>
+            <input id="f-name" name="name" required placeholder="${t('name_ph')}"
+              class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:ring-2 transition-all"
+              style="--tw-ring-color:#021a42/20"/>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide mb-1.5" style="color:#021a42">${t('email_label')}</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <input id="f-email" name="email" type="email" required placeholder="${t('email_ph')}"
+              class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm transition-all"/>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide mb-1.5" style="color:#021a42">${t('pwd_label')}</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <input id="f-pwd" name="password" type="password" required placeholder="${t('pwd_ph')}"
+              oninput="checkPwd(this.value)"
+              class="w-full border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm transition-all"/>
+            <button type="button" onclick="togglePwd('f-pwd','eye1')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+              <svg id="eye1" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Strength bar -->
+          <div class="mt-2 flex items-center gap-2">
+            <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden pw-bar">
+              <div id="pw-strength-bar" class="h-full rounded-full" style="width:0%;background:#f6245b"></div>
+            </div>
+            <span id="pw-strength-label" class="text-xs text-slate-400 w-16 text-right"></span>
+          </div>
+        </div>
+
+        <!-- Confirm password -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wide mb-1.5" style="color:#021a42">${t('pwd_confirm_label')}</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+              </svg>
+            </div>
+            <input id="f-confirm" name="confirm" type="password" required placeholder="${t('pwd_confirm_ph')}"
+              class="w-full border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm transition-all"/>
+            <button type="button" onclick="togglePwd('f-confirm','eye2')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+              <svg id="eye2" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div id="form-error" class="hidden items-center gap-2.5 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl px-4 py-3">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+          <span id="form-error-text"></span>
+        </div>
+
+        <!-- Back + Submit -->
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="goBack()"
+            class="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            ${lang==='en'?'Back':'Retour'}
+          </button>
+          <button type="submit" id="submit-btn"
+            class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
+            style="background:#021a42">
+            <svg id="spin" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span id="btn-txt">${t('submit_btn')}</span>
+          </button>
+        </div>
+      </form>
+    </div>`;
+}
+
+function goBack() {
+  step = 1;
+  renderStep1();
+}
+
+// ── Password strength ─────────────────────────────────────────────────────────
+function checkPwd(v) {
+  let score = 0;
+  if (v.length >= 8)  score++;
+  if (v.length >= 12) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+
+  const map = [
+    { w:'0%', color:'#f6245b', label:'' },
+    { w:'25%', color:'#f6245b', label:t('pwd_weak') },
+    { w:'50%', color:'#f97316', label:t('pwd_fair') },
+    { w:'75%', color:'#eab308', label:t('pwd_good') },
+    { w:'100%', color:'#22c55e', label:t('pwd_strong') },
+  ];
+  const s = map[Math.min(score, 4)];
+  document.getElementById('pw-strength-bar').style.width = s.w;
+  document.getElementById('pw-strength-bar').style.background = s.color;
+  document.getElementById('pw-strength-label').textContent = s.label;
+  document.getElementById('pw-strength-label').style.color = s.color;
+}
+
+function togglePwd(inputId, eyeId) {
+  const inp = document.getElementById(inputId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────────
+async function submitSetup(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('form-error');
+  const errTxt = document.getElementById('form-error-text');
+  const spin = document.getElementById('spin');
+  const btnTxt = document.getElementById('btn-txt');
+  const btn = document.getElementById('submit-btn');
+
+  errEl.classList.add('hidden');
+
+  const name = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const pwd = document.getElementById('f-pwd').value;
+  const confirm = document.getElementById('f-confirm').value;
+
+  if (pwd.length < 8) { showErr(t('pwd_short')); return; }
+  if (pwd !== confirm) { showErr(t('pwd_mismatch')); return; }
+
+  spin.classList.remove('hidden');
+  btnTxt.textContent = t('submitting');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password: pwd, language: lang }),
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      // Success screen
+      document.getElementById('step-content').innerHTML = `
+        <div class="p-10 text-center scale-in">
+          <div class="w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center shadow-lg" style="background:#021a42">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+          </div>
+          <h3 class="text-lg font-bold mb-2" style="color:#021a42">${lang==='en'?'All set!':'C\'est parti !'}</h3>
+          <p class="text-sm text-slate-500 mb-1">${t('success')}</p>
+          <div class="flex items-center justify-center gap-1.5 mt-4">
+            <div class="w-1.5 h-1.5 rounded-full animate-bounce" style="background:#f6245b;animation-delay:0ms"></div>
+            <div class="w-1.5 h-1.5 rounded-full animate-bounce" style="background:#f6245b;animation-delay:150ms"></div>
+            <div class="w-1.5 h-1.5 rounded-full animate-bounce" style="background:#f6245b;animation-delay:300ms"></div>
+          </div>
+        </div>`;
+      document.getElementById('progress-bar').style.width = '100%';
+      setTimeout(() => { window.location.href = '/login'; }, 2200);
+    } else {
+      showErr(data.error ?? (lang==='en'?'An error occurred':'Une erreur est survenue'));
+    }
+  } catch {
+    showErr(lang==='en'?'Network error, please retry':'Erreur réseau, veuillez réessayer');
+  }
+}
+
+function showErr(msg) {
+  const errEl = document.getElementById('form-error');
+  document.getElementById('form-error-text').textContent = msg;
+  errEl.classList.remove('hidden');
+  errEl.classList.add('flex');
+  document.getElementById('spin').classList.add('hidden');
+  document.getElementById('btn-txt').textContent = t('submit_btn');
+  document.getElementById('submit-btn').disabled = false;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  // If already initialized, go to login
+  try {
+    const r = await fetch('/api/setup/status');
+    const d = await r.json();
+    if (d.initialized) { window.location.href = '/login'; return; }
+  } catch {}
+  renderStep1();
+})();
+</script>
+</body>
+</html>

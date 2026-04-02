@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"mutane/internal/ctxkey"
 )
 
 type Handler struct {
@@ -136,7 +137,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Enable2FA(w http.ResponseWriter, r *http.Request) {
-	userID, _ := r.Context().Value(userIDCtxKey).(int64)
+	userID, _ := r.Context().Value(ctxkey.UserID).(int64)
 	if userID == 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -171,7 +172,7 @@ func (h *Handler) Verify2FA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := r.Context().Value(userIDCtxKey).(int64)
+	userID, _ := r.Context().Value(ctxkey.UserID).(int64)
 	if userID == 0 {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -192,6 +193,13 @@ func (h *Handler) Verify2FA(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	// Redirect to setup if platform not yet initialized
+	var count int
+	if err := h.db.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM users`).Scan(&count); err == nil && count == 0 {
+		http.Redirect(w, r, "/setup", http.StatusSeeOther)
+		return
+	}
+	// Redirect to admin if already logged in
 	if cookie, err := r.Cookie("session_token"); err == nil && cookie.Value != "" {
 		if _, err := ValidateToken(cookie.Value); err == nil {
 			http.Redirect(w, r, "/admin/", http.StatusSeeOther)
@@ -201,9 +209,6 @@ func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/login.html")
 }
 
-type ctxKey string
-
-const userIDCtxKey ctxKey = "userID"
 
 func writeJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")

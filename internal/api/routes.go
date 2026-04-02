@@ -8,6 +8,11 @@ func NewRouter(h *Handler) http.Handler {
 	// ── Static assets ────────────────────────────────────────────────────────
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
+	// ── Setup / Onboarding (public — accessible uniquement si non initialisé) ─
+	mux.HandleFunc("GET /setup", h.Setup.SetupPage)
+	mux.HandleFunc("GET /api/setup/status", h.Setup.Status)
+	mux.HandleFunc("POST /api/setup", h.Setup.Init)
+
 	// ── Public pages ─────────────────────────────────────────────────────────
 	mux.HandleFunc("GET /login", h.Auth.LoginPage)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +43,10 @@ func NewRouter(h *Handler) http.Handler {
 	mux.Handle("PUT /api/content-types/{id}", BearerAuth(http.HandlerFunc(h.Content.UpdateContentType)))
 	mux.Handle("DELETE /api/content-types/{id}", BearerAuth(http.HandlerFunc(h.Content.DeleteContentType)))
 
+	// Fields
+	mux.Handle("POST /api/content-types/{id}/fields", BearerAuth(http.HandlerFunc(h.Content.AddField)))
+	mux.Handle("DELETE /api/content-types/{id}/fields/{fid}", BearerAuth(http.HandlerFunc(h.Content.DeleteField)))
+
 	// Entries
 	mux.Handle("GET /api/content-types/{typeId}/entries", BearerAuth(http.HandlerFunc(h.Content.ListEntries)))
 	mux.Handle("POST /api/content-types/{typeId}/entries", BearerAuth(http.HandlerFunc(h.Content.CreateEntry)))
@@ -55,7 +64,7 @@ func NewRouter(h *Handler) http.Handler {
 	mux.Handle("POST /api/keys", BearerAuth(http.HandlerFunc(h.APIKey.Create)))
 	mux.Handle("DELETE /api/keys/{id}", BearerAuth(http.HandlerFunc(h.APIKey.Revoke)))
 
-	// ── Admin UI (session cookie, HTMX + Templ pages) ─────────────────────────
+	// ── Admin UI (session cookie) ─────────────────────────────────────────────
 	adminMux := http.NewServeMux()
 	adminMux.HandleFunc("GET /admin/", h.Content.DashboardPage)
 	adminMux.HandleFunc("GET /admin/content-types", h.Content.ListPage)
@@ -67,8 +76,6 @@ func NewRouter(h *Handler) http.Handler {
 	adminMux.HandleFunc("GET /admin/media", h.Media.ManagerPage)
 	adminMux.HandleFunc("GET /admin/api-keys", h.APIKey.KeysPage)
 	adminMux.HandleFunc("GET /admin/settings", h.Admin.SettingsPage)
-
-	// HTMX action routes (within admin)
 	adminMux.HandleFunc("POST /admin/content-types", h.Content.CreateContentType)
 	adminMux.HandleFunc("DELETE /admin/content-types/{id}", h.Content.DeleteContentType)
 	adminMux.HandleFunc("POST /admin/content-types/{id}/fields", h.Content.AddField)
@@ -84,10 +91,10 @@ func NewRouter(h *Handler) http.Handler {
 	mux.Handle("/admin/", SessionAuth(adminMux))
 
 	// ── Public API v1 (X-API-Key) ─────────────────────────────────────────────
-	apiKeyMiddleware := APIKeyAuth(h.KeyRepo)
-	mux.Handle("GET /v1/media", apiKeyMiddleware(http.HandlerFunc(h.Public.ListMedia)))
-	mux.Handle("GET /v1/{slug}", apiKeyMiddleware(http.HandlerFunc(h.Public.ListEntries)))
-	mux.Handle("GET /v1/{slug}/{id}", apiKeyMiddleware(http.HandlerFunc(h.Public.GetEntry)))
+	apiKeyMW := APIKeyAuth(h.KeyRepo)
+	mux.Handle("GET /v1/media", apiKeyMW(http.HandlerFunc(h.Public.ListMedia)))
+	mux.Handle("GET /v1/{slug}", apiKeyMW(http.HandlerFunc(h.Public.ListEntries)))
+	mux.Handle("GET /v1/{slug}/{id}", apiKeyMW(http.HandlerFunc(h.Public.GetEntry)))
 
 	return Logger(CORS(mux))
 }

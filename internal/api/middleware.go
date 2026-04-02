@@ -9,11 +9,8 @@ import (
 
 	"mutane/internal/apikey"
 	"mutane/internal/auth"
+	"mutane/internal/ctxkey"
 )
-
-type contextKey string
-
-const UserIDKey contextKey = "userID"
 
 // Logger logs method, path and duration for every request.
 func Logger(next http.Handler) http.Handler {
@@ -52,7 +49,7 @@ func SessionAuth(next http.Handler) http.Handler {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
-		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+		ctx := context.WithValue(r.Context(), ctxkey.UserID, claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -71,7 +68,7 @@ func BearerAuth(next http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
-		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+		ctx := context.WithValue(r.Context(), ctxkey.UserID, claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -90,7 +87,7 @@ func APIKeyAuth(repo *apikey.Repository) func(http.Handler) http.Handler {
 				writeError(w, http.StatusUnauthorized, "invalid api key")
 				return
 			}
-			ctx := context.WithValue(r.Context(), UserIDKey, ak.UserID)
+			ctx := context.WithValue(r.Context(), ctxkey.UserID, ak.UserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

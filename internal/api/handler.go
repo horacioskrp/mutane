@@ -9,6 +9,7 @@ import (
 	"mutane/internal/content"
 	"mutane/internal/media"
 	"mutane/internal/public"
+	"mutane/internal/setup"
 )
 
 type Handler struct {
@@ -19,6 +20,7 @@ type Handler struct {
 	APIKey  *apikey.Handler
 	Admin   *admin.Handler
 	Public  *public.Handler
+	Setup   *setup.Handler
 	KeyRepo *apikey.Repository
 }
 
@@ -31,6 +33,7 @@ func NewHandler(db *sql.DB) *Handler {
 		APIKey:  apikey.NewHandler(db),
 		Admin:   admin.NewHandler(db),
 		Public:  public.NewHandler(db),
+		Setup:   setup.NewHandler(db),
 		KeyRepo: apikey.NewRepository(db),
 	}
 }

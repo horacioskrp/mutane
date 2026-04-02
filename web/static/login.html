@@ -6,255 +6,380 @@
   <title>Mutane CMS — Connexion</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          fontFamily: { sans: ['Inter','sans-serif'] },
           colors: {
-            brand: { 50:'#eef2ff',100:'#e0e7ff',500:'#6366f1',600:'#4f46e5',700:'#4338ca',900:'#312e81' }
+            primary: { DEFAULT:'#021a42', mid:'#032d6b', light:'#e8edf5' },
+            secondary: { DEFAULT:'#f6245b', light:'#fde8ee', dark:'#d41a4e' }
           }
         }
       }
     }
   </script>
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    .gradient-bg {
-      background: linear-gradient(135deg, #0f0c29, #1a1040, #24243e);
+    body { font-family:'Inter',sans-serif; }
+    input:focus { outline:none; }
+
+    /* Animated background */
+    .bg-animated {
+      background: linear-gradient(145deg, #021a42 0%, #032d6b 40%, #041e50 70%, #021a42 100%);
+      background-size: 400% 400%;
+      animation: gradientShift 12s ease infinite;
     }
-    .noise {
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    @keyframes gradientShift {
+      0%   { background-position: 0% 50% }
+      50%  { background-position: 100% 50% }
+      100% { background-position: 0% 50% }
     }
-    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-    .float { animation: float 6s ease-in-out infinite; }
-    input:focus { outline: none; }
+
+    /* Floating orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      animation: drift 18s ease-in-out infinite;
+    }
+    .orb-1 { width: 480px; height: 480px; background: rgba(246,36,91,.12); top: -120px; right: -100px; animation-delay: 0s; }
+    .orb-2 { width: 320px; height: 320px; background: rgba(3,45,107,.5); bottom: -80px; left: -80px; animation-delay: -6s; }
+    .orb-3 { width: 200px; height: 200px; background: rgba(246,36,91,.07); top: 50%; left: 15%; animation-delay: -3s; }
+    @keyframes drift {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%      { transform: translate(20px,-30px) scale(1.05); }
+      66%      { transform: translate(-15px,20px) scale(.95); }
+    }
+
+    /* Grid overlay */
+    .grid-overlay {
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Card */
+    @keyframes cardIn {
+      from { opacity:0; transform: translateY(24px) scale(.97); }
+      to   { opacity:1; transform: translateY(0)    scale(1); }
+    }
+    .card-in { animation: cardIn .45s cubic-bezier(.22,.68,0,1.2) forwards; }
+
+    /* Input focus ring */
+    .inp {
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .inp:focus {
+      border-color: #021a42;
+      box-shadow: 0 0 0 3.5px rgba(2,26,66,.1);
+    }
+
+    /* 2FA input spacing */
+    #totp_code { letter-spacing: .45em; }
+
+    /* Divider dots */
+    .dot-pulse span {
+      display: inline-block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.5);
+      margin: 0 3px;
+      animation: dotBounce 1.2s ease-in-out infinite;
+    }
+    .dot-pulse span:nth-child(2) { animation-delay:.15s; }
+    .dot-pulse span:nth-child(3) { animation-delay:.3s; }
+    @keyframes dotBounce {
+      0%,80%,100% { transform:scale(1); opacity:.5; }
+      40%          { transform:scale(1.4); opacity:1; }
+    }
   </style>
 </head>
-<body class="h-full flex font-sans">
+<body class="h-full flex items-center justify-center bg-animated relative overflow-hidden">
 
-  <!-- LEFT — Branding -->
-  <div class="hidden lg:flex lg:w-[52%] gradient-bg noise flex-col justify-between p-12 relative overflow-hidden">
+  <!-- Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
 
-    <!-- Decorative blobs -->
-    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl pointer-events-none"></div>
-    <div class="absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-violet-600/20 blur-3xl pointer-events-none"></div>
-    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
+  <!-- Grid -->
+  <div class="absolute inset-0 grid-overlay pointer-events-none"></div>
 
-    <!-- Top logo -->
-    <div class="relative z-10 flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-          <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+  <!-- Floating badge top -->
+  <div class="absolute top-6 left-1/2 -translate-x-1/2 z-20">
+    <div class="flex items-center gap-2 bg-white/8 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5">
+      <span class="w-1.5 h-1.5 rounded-full animate-pulse" style="background:#f6245b"></span>
+      <span class="text-[11px] font-medium text-white/70 tracking-wide">Open Source Headless CMS</span>
+    </div>
+  </div>
+
+  <!-- ── CARD ─────────────────────────────────────────────────────────── -->
+  <div class="relative z-10 w-full max-w-[420px] mx-4 card-in">
+
+    <!-- Card body -->
+    <div class="bg-white rounded-3xl shadow-2xl shadow-black/40 overflow-hidden">
+
+      <!-- Card header -->
+      <div class="relative px-8 pt-8 pb-6 overflow-hidden" style="background:linear-gradient(135deg,#021a42 0%,#032d6b 100%)">
+        <!-- Subtle pattern -->
+        <div class="absolute inset-0 opacity-[.04]"
+          style="background-image:url(\"data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23fff' fill-opacity='1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1.5'/%3E%3Ccircle cx='23' cy='23' r='1.5'/%3E%3C/g%3E%3C/svg%3E\")">
+        </div>
+        <!-- Accent blob -->
+        <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-20 pointer-events-none" style="background:radial-gradient(circle,#f6245b,transparent 70%)"></div>
+
+        <div class="relative flex items-center gap-3">
+          <!-- Logo mark -->
+          <div class="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg shrink-0" style="background:#f6245b;box-shadow:0 8px 20px rgba(246,36,91,.4)">
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-white font-bold text-lg leading-none tracking-tight">Mutane CMS</p>
+            <p class="text-blue-300/60 text-xs mt-0.5 font-medium">v0.1.0-alpha</p>
+          </div>
+        </div>
+
+        <div class="relative mt-5">
+          <h1 class="text-white text-2xl font-bold leading-tight">Bon retour 👋</h1>
+          <p class="text-blue-200/60 text-sm mt-1">Connectez-vous à votre espace admin</p>
+        </div>
+      </div>
+
+      <!-- Card form -->
+      <div class="px-8 py-7">
+        <form id="login-form" class="space-y-4">
+
+          <!-- Email -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-widest mb-2" style="color:#021a42">Adresse e-mail</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <input id="email" name="email" type="email" required autocomplete="email"
+                placeholder="admin@exemple.com"
+                class="inp w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 bg-slate-50/60"/>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div>
+            <label class="block text-[11px] font-bold uppercase tracking-widest mb-2" style="color:#021a42">Mot de passe</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <input id="password" name="password" type="password" required autocomplete="current-password"
+                placeholder="••••••••"
+                class="inp w-full border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm text-slate-900 placeholder-slate-400 bg-slate-50/60"/>
+              <button type="button" onclick="togglePwd()"
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors">
+                <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2FA (hidden by default) -->
+          <div id="totp-field" class="hidden">
+            <label class="block text-[11px] font-bold uppercase tracking-widest mb-2" style="color:#021a42">Code 2FA</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+              </div>
+              <input id="totp_code" name="totp_code" type="text" inputmode="numeric" maxlength="6"
+                placeholder="0  0  0  0  0  0"
+                class="inp w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-center text-base font-mono placeholder-slate-300 bg-slate-50/60"/>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1.5 text-center">Ouvrez votre application d'authentification</p>
+          </div>
+
+          <!-- Error -->
+          <div id="error-msg" class="hidden">
+            <div class="flex items-start gap-2.5 bg-red-50 border border-red-100 text-red-700 text-xs rounded-xl px-3.5 py-3">
+              <svg class="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+              </svg>
+              <span id="error-text"></span>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" id="submit-btn"
+            class="w-full mt-1 py-3 rounded-xl font-semibold text-sm text-white flex items-center justify-center gap-2.5 transition-all relative overflow-hidden group"
+            style="background:linear-gradient(135deg,#021a42 0%,#032d6b 100%);box-shadow:0 4px 16px rgba(2,26,66,.35)">
+            <!-- Shine effect -->
+            <span class="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 bg-gradient-to-r from-transparent via-white/8 to-transparent skew-x-12 pointer-events-none"></span>
+            <svg id="btn-spinner" class="hidden animate-spin w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span id="btn-label">Se connecter</span>
+            <svg id="btn-arrow" class="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
+
+        </form>
+      </div>
+
+      <!-- Card footer -->
+      <div class="px-8 pb-7 -mt-2">
+        <!-- Feature pills -->
+        <div class="flex flex-wrap gap-1.5 justify-center mb-6">
+          <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+            <span class="w-1 h-1 rounded-full" style="background:#f6245b"></span>API REST
+          </span>
+          <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+            <span class="w-1 h-1 rounded-full" style="background:#f6245b"></span>2FA TOTP
+          </span>
+          <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+            <span class="w-1 h-1 rounded-full" style="background:#f6245b"></span>Open Source
+          </span>
+        </div>
+        <div class="border-t border-slate-100 pt-5 flex items-center justify-between">
+          <p class="text-[11px] text-slate-400">Mutane CMS &mdash; Open Source</p>
+          <a href="https://github.com" target="_blank"
+            class="flex items-center gap-1.5 text-[11px] font-medium transition-colors hover:opacity-80"
+            style="color:#f6245b">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0C5.37 0 0 5.373 0 12c0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+            </svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Floating security badge below card -->
+    <div class="flex items-center justify-center gap-5 mt-5">
+      <div class="flex items-center gap-1.5 text-[11px] text-white/40 font-medium">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
         </svg>
+        Connexion sécurisée
       </div>
-      <span class="text-white font-semibold text-lg tracking-tight">Mutane CMS</span>
-    </div>
-
-    <!-- Center content -->
-    <div class="relative z-10 float">
-      <div class="inline-flex items-center gap-2 bg-white/10 border border-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs text-indigo-200 mb-6">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-        Open Source Headless CMS
+      <div class="w-px h-3 bg-white/10"></div>
+      <div class="flex items-center gap-1.5 text-[11px] text-white/40 font-medium">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        JWT + TOTP
       </div>
-      <h1 class="text-4xl font-bold text-white leading-tight mb-4">
-        Gérez votre contenu<br/>
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-violet-300">sans contraintes</span>
-      </h1>
-      <p class="text-slate-400 text-base leading-relaxed max-w-sm mb-8">
-        Créez vos structures de contenu, gérez vos entrées et exposez votre API — tout depuis une interface claire et rapide.
-      </p>
-
-      <!-- Features -->
-      <div class="space-y-3">
-        <div class="flex items-center gap-3 text-sm text-slate-300">
-          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-            <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-          </div>
-          Builder visuel de types de contenu
-        </div>
-        <div class="flex items-center gap-3 text-sm text-slate-300">
-          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-            <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-          </div>
-          API REST sécurisée par clé API
-        </div>
-        <div class="flex items-center gap-3 text-sm text-slate-300">
-          <div class="w-6 h-6 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-            <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
-          </div>
-          Authentification 2FA TOTP
-        </div>
+      <div class="w-px h-3 bg-white/10"></div>
+      <div class="flex items-center gap-1.5 text-[11px] text-white/40 font-medium">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        Go + PostgreSQL
       </div>
     </div>
 
-    <!-- Bottom -->
-    <div class="relative z-10">
-      <p class="text-slate-600 text-xs">Built with Go · PostgreSQL · Tailwind CSS</p>
-    </div>
   </div>
+  <!-- ── END CARD ──────────────────────────────────────────────────────── -->
 
-  <!-- RIGHT — Form -->
-  <div class="flex-1 flex items-center justify-center bg-white px-6 py-12">
-    <div class="w-full max-w-sm">
+<script>
+  let totpStep = false;
 
-      <!-- Mobile logo -->
-      <div class="flex items-center gap-2 mb-8 lg:hidden">
-        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-          <svg class="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
-          </svg>
-        </div>
-        <span class="font-semibold text-slate-900">Mutane CMS</span>
-      </div>
+  // Check setup status on load — redirect to /setup if not initialized
+  (async () => {
+    try {
+      const r = await fetch('/api/setup/status');
+      const d = await r.json();
+      if (!d.initialized) window.location.href = '/setup';
+    } catch {}
+  })();
 
-      <h2 class="text-2xl font-bold text-slate-900 mb-1">Bon retour 👋</h2>
-      <p class="text-sm text-slate-500 mb-8">Connectez-vous à votre espace admin</p>
+  function togglePwd() {
+    const inp = document.getElementById('password');
+    const icon = document.getElementById('eye-icon');
+    const isHidden = inp.type === 'password';
+    inp.type = isHidden ? 'text' : 'password';
+    icon.innerHTML = isHidden
+      ? `<path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>`
+      : `<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>`;
+  }
 
-      <!-- Form -->
-      <form id="login-form" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="email">Adresse email</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-              </svg>
-            </div>
-            <input id="email" name="email" type="email" required autocomplete="email" placeholder="admin@exemple.com"
-              class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400
-                     focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"/>
-          </div>
-        </div>
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+    setLoading(true);
 
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="text-sm font-medium text-slate-700" for="password">Mot de passe</label>
-          </div>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-              </svg>
-            </div>
-            <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"
-              class="w-full border border-slate-200 rounded-xl pl-10 pr-11 py-2.5 text-sm text-slate-900 placeholder-slate-400
-                     focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"/>
-            <button type="button" onclick="togglePwd()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
-              <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email:     e.target.email.value,
+          password:  e.target.password.value,
+          totp_code: e.target.totp_code?.value ?? '',
+        }),
+      });
+      const data = await res.json();
 
-        <!-- 2FA field (hidden) -->
-        <div id="totp-field" class="hidden">
-          <label class="block text-sm font-medium text-slate-700 mb-1.5" for="totp_code">
-            Code d'authentification (2FA)
-          </label>
-          <input id="totp_code" name="totp_code" type="text" inputmode="numeric" maxlength="6" placeholder="000 000"
-            class="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-center tracking-[0.4em] text-slate-900 placeholder-slate-400
-                   focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-mono text-base"/>
-          <p class="text-xs text-slate-400 mt-1.5 text-center">Ouvrez votre application d'authentification</p>
-        </div>
-
-        <!-- Error -->
-        <div id="error-msg" class="hidden flex items-center gap-2.5 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl px-4 py-3">
-          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
-          </svg>
-          <span id="error-text"></span>
-        </div>
-
-        <button type="submit" id="submit-btn"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold
-                 py-2.5 rounded-xl transition-all text-sm flex items-center justify-center gap-2 shadow-sm shadow-indigo-200 mt-2">
-          <svg id="btn-spinner" class="hidden animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-          <span id="btn-label">Se connecter</span>
-          <svg id="btn-arrow" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </button>
-      </form>
-
-      <p class="text-center text-xs text-slate-400 mt-8">
-        Mutane CMS — Open Source &middot;
-        <a href="https://github.com" class="text-indigo-500 hover:text-indigo-700">GitHub</a>
-      </p>
-    </div>
-  </div>
-
-  <script>
-    let totpStep = false;
-
-    function togglePwd() {
-      const input = document.getElementById('password');
-      input.type = input.type === 'password' ? 'text' : 'password';
-    }
-
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errEl = document.getElementById('error-msg');
-      const errText = document.getElementById('error-text');
-      const spinner = document.getElementById('btn-spinner');
-      const btnLabel = document.getElementById('btn-label');
-      const btnArrow = document.getElementById('btn-arrow');
-
-      errEl.classList.add('hidden');
-      spinner.classList.remove('hidden');
-      btnArrow.classList.add('hidden');
-      btnLabel.textContent = totpStep ? 'Vérification…' : 'Connexion…';
-      document.getElementById('submit-btn').disabled = true;
-
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: e.target.email.value,
-            password: e.target.password.value,
-            totp_code: e.target.totp_code?.value ?? '',
-          }),
-        });
-        const data = await res.json();
-
-        if (data.totp_required && !totpStep) {
-          totpStep = true;
-          document.getElementById('totp-field').classList.remove('hidden');
-          document.getElementById('totp_code').focus();
-          btnLabel.textContent = 'Vérifier le code';
-          spinner.classList.add('hidden');
-          btnArrow.classList.remove('hidden');
-          document.getElementById('submit-btn').disabled = false;
-          return;
-        }
-
-        if (data.token) {
-          localStorage.setItem('mutane_token', data.token);
-          btnLabel.textContent = 'Redirection…';
-          window.location.href = '/admin/';
-        } else {
-          showErr(data.error ?? 'Identifiants incorrects');
-        }
-      } catch {
-        showErr('Erreur réseau, veuillez réessayer.');
+      if (data.totp_required && !totpStep) {
+        totpStep = true;
+        const field = document.getElementById('totp-field');
+        field.classList.remove('hidden');
+        field.classList.add('animate-pulse');
+        setTimeout(() => field.classList.remove('animate-pulse'), 600);
+        document.getElementById('totp_code').focus();
+        document.getElementById('btn-label').textContent = 'Vérifier le code';
+        setLoading(false);
+        return;
       }
-    });
 
-    function showErr(msg) {
-      const errEl = document.getElementById('error-msg');
-      document.getElementById('error-text').textContent = msg;
-      errEl.classList.remove('hidden');
-      document.getElementById('btn-spinner').classList.add('hidden');
-      document.getElementById('btn-arrow').classList.remove('hidden');
-      document.getElementById('btn-label').textContent = totpStep ? 'Vérifier le code' : 'Se connecter';
-      document.getElementById('submit-btn').disabled = false;
+      if (data.token) {
+        localStorage.setItem('mutane_token', data.token);
+        document.getElementById('btn-label').textContent = 'Redirection…';
+        document.getElementById('btn-arrow').classList.add('hidden');
+        window.location.href = '/admin/';
+      } else {
+        showError(data.error ?? 'Identifiants incorrects');
+      }
+    } catch {
+      showError('Erreur réseau, veuillez réessayer.');
     }
-  </script>
+  });
+
+  function setLoading(on) {
+    document.getElementById('btn-spinner').classList.toggle('hidden', !on);
+    document.getElementById('btn-arrow').classList.toggle('hidden', on);
+    document.getElementById('btn-label').textContent = on
+      ? (totpStep ? 'Vérification…' : 'Connexion…')
+      : (totpStep ? 'Vérifier le code' : 'Se connecter');
+    document.getElementById('submit-btn').disabled = on;
+  }
+
+  function showError(msg) {
+    document.getElementById('error-text').textContent = msg;
+    document.getElementById('error-msg').classList.remove('hidden');
+    setLoading(false);
+    // Shake the card
+    const card = document.querySelector('.card-in');
+    card.style.animation = 'none';
+    card.style.transform = 'translateX(-6px)';
+    setTimeout(() => { card.style.transform = 'translateX(6px)'; }, 80);
+    setTimeout(() => { card.style.transform = 'translateX(-4px)'; }, 160);
+    setTimeout(() => { card.style.transform = 'translateX(0)'; card.style.transition = 'transform .15s'; }, 240);
+  }
+
+  function hideError() {
+    document.getElementById('error-msg').classList.add('hidden');
+  }
+</script>
 </body>
 </html>
