@@ -46,6 +46,7 @@ func NewRouter(h *Handler) http.Handler {
 	// Fields
 	mux.Handle("POST /api/content-types/{id}/fields", BearerAuth(http.HandlerFunc(h.Content.AddField)))
 	mux.Handle("DELETE /api/content-types/{id}/fields/{fid}", BearerAuth(http.HandlerFunc(h.Content.DeleteField)))
+	mux.Handle("PUT /api/content-types/{id}/fields/reorder", BearerAuth(http.HandlerFunc(h.Content.ReorderFields)))
 
 	// Entries
 	mux.Handle("GET /api/content-types/{typeId}/entries", BearerAuth(http.HandlerFunc(h.Content.ListEntries)))
@@ -62,6 +63,7 @@ func NewRouter(h *Handler) http.Handler {
 	// API Keys
 	mux.Handle("GET /api/keys", BearerAuth(http.HandlerFunc(h.APIKey.List)))
 	mux.Handle("POST /api/keys", BearerAuth(http.HandlerFunc(h.APIKey.Create)))
+	mux.Handle("POST /api/keys/{id}/rotate", BearerAuth(http.HandlerFunc(h.APIKey.Rotate)))
 	mux.Handle("DELETE /api/keys/{id}", BearerAuth(http.HandlerFunc(h.APIKey.Revoke)))
 
 	// ── Admin UI (session cookie) ─────────────────────────────────────────────
@@ -86,6 +88,7 @@ func NewRouter(h *Handler) http.Handler {
 	adminMux.HandleFunc("POST /admin/media/upload", h.Media.Upload)
 	adminMux.HandleFunc("DELETE /admin/media/{id}", h.Media.Delete)
 	adminMux.HandleFunc("POST /admin/api-keys", h.APIKey.Create)
+	adminMux.HandleFunc("POST /admin/api-keys/{id}/rotate", h.APIKey.Rotate)
 	adminMux.HandleFunc("DELETE /admin/api-keys/{id}", h.APIKey.Revoke)
 
 	mux.Handle("/admin/", SessionAuth(adminMux))
