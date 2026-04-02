@@ -42,18 +42,58 @@ func RunMigrations(db *sql.DB) error {
 			return fmt.Errorf("read %s: %w", f, err)
 		}
 
-		if _, err := db.Exec(string(content)); err != nil {
-			return fmt.Errorf("apply %s: %w", f, err)
+		// Split on ";" and execute each statement individually.
+		// lib/pq's db.Exec() supports multi-statement strings via the simple-query
+		// protocol, but splitting is more portable and gives clearer error messages.
+		stmts := splitStatements(string(content))
+		for i, stmt := range stmts {
+			if _, err := db.Exec(stmt); err != nil {
+				return fmt.Errorf("apply %s statement %d (%q): %w", f, i+1, truncate(stmt, 60), err)
+			}
 		}
 
 		if _, err := db.Exec(`INSERT INTO schema_migrations (filename) VALUES ($1)`, f); err != nil {
 			return fmt.Errorf("record migration %s: %w", f, err)
 		}
 
-		log.Printf("Migration applied: %s", f)
+		log.Printf("Migration applied: %s (%d statements)", f, len(stmts))
 	}
 
 	return nil
+}
+
+// splitStatements splits a SQL file into individual statements on ";",
+// skipping blank lines and SQL-style comments.
+func splitStatements(content string) []string {
+	var stmts []string
+	for _, raw := range strings.Split(content, ";") {
+		stmt := strings.TrimSpace(raw)
+		if stmt == "" {
+			continue
+		}
+		// Strip leading comment-only lines so empty results after comment removal are skipped.
+		var lines []string
+		for _, line := range strings.Split(stmt, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+				continue
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) == 0 {
+			continue
+		}
+		stmts = append(stmts, strings.Join(lines, "\n"))
+	}
+	return stmts
+}
+
+func truncate(s string, n int) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }
 
 func ensureMigrationsTable(db *sql.DB) error {

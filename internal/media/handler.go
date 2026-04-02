@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	"mutane/internal/ctxkey"
 )
 
 const maxUploadSize = 32 << 20 // 32 MB
@@ -41,7 +43,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := r.Context().Value(userIDKey).(int64)
+	userID, _ := r.Context().Value(ctxkey.UserID).(int64)
 	var uid *int64
 	if userID != 0 {
 		uid = &userID
@@ -103,9 +105,6 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-type ctxKey string
-
-const userIDKey ctxKey = "userID"
 
 func queryInt(r *http.Request, key string, def int) int {
 	v, err := strconv.Atoi(r.URL.Query().Get(key))

@@ -1,0 +1,50 @@
+# .air.toml — hot-reload config for development
+# Install: go install github.com/air-verse/air@latest
+# Usage:   air   (from project root, with APP_ENV=development in .env)
+# Docs:    https://github.com/air-verse/air
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Command to compile the server binary.
+  cmd = "go build -o ./tmp/server.exe ./cmd/server/"
+
+  # Path to the built binary (air runs this after each successful build).
+  bin = "./tmp/server.exe"
+
+  # Delay before triggering a rebuild (ms) — avoids thrashing on rapid saves.
+  delay = 800
+
+  # Only watch these extensions for Go rebuilds.
+  # Static files (html, css) are handled by the in-process SSE watcher.
+  include_ext = ["go", "mod", "toml"]
+
+  # Directories / patterns to ignore.
+  exclude_dir  = ["tmp", "node_modules", "uploads", "web", "migrations"]
+  exclude_file = []
+  exclude_regex = ["_test\\.go$"]
+
+  # Send SIGTERM then wait before killing the old process.
+  kill_delay = "500ms"
+  send_interrupt = true
+
+  # Log build output even on success.
+  log = "air.log"
+
+  # Show a summary of what triggered the rebuild.
+  args_bin = []
+
+[log]
+  time      = false   # air already shows timestamps
+  main_only = false   # show build output
+
+[color]
+  main    = "magenta"
+  watcher = "cyan"
+  build   = "yellow"
+  runner  = "green"
+
+[screen]
+  clear_on_rebuild = false   # keep previous log lines visible
+  keep_history     = true
