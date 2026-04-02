@@ -43,23 +43,64 @@ func (r *Repository) GetContentType(ctx context.Context, id int64) (*ContentType
 }
 
 func (r *Repository) ListContentTypes(ctx context.Context) ([]ContentType, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, slug, description, created_at, updated_at FROM content_types ORDER BY name`,
-	)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT ct.id, ct.name, ct.slug, ct.description, ct.created_at, ct.updated_at,
+		       f.id, f.content_type_id, f.name, f.type, f.required, f."order"
+		FROM content_types ct
+		LEFT JOIN fields f ON f.content_type_id = ct.id
+		ORDER BY ct.name, f."order"
+	`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var types []ContentType
+	// Use ordered map to preserve ct.name sort order
+	type entry struct {
+		ct  ContentType
+		idx int
+	}
+	indexMap := make(map[int64]int) // ctID -> index in result slice
+	var result []ContentType
+
 	for rows.Next() {
 		var ct ContentType
-		if err := rows.Scan(&ct.ID, &ct.Name, &ct.Slug, &ct.Description, &ct.CreatedAt, &ct.UpdatedAt); err != nil {
+		// Field columns may be NULL when the content type has no fields (LEFT JOIN)
+		var (
+			fID       sql.NullInt64
+			fCTID     sql.NullInt64
+			fName     sql.NullString
+			fType     sql.NullString
+			fRequired sql.NullBool
+			fOrder    sql.NullInt32
+		)
+		if err := rows.Scan(
+			&ct.ID, &ct.Name, &ct.Slug, &ct.Description, &ct.CreatedAt, &ct.UpdatedAt,
+			&fID, &fCTID, &fName, &fType, &fRequired, &fOrder,
+		); err != nil {
 			return nil, err
 		}
-		types = append(types, ct)
+
+		idx, exists := indexMap[ct.ID]
+		if !exists {
+			ct.Fields = []Field{} // never nil — serialises as [] not null
+			result = append(result, ct)
+			idx = len(result) - 1
+			indexMap[ct.ID] = idx
+		}
+
+		if fID.Valid {
+			result[idx].Fields = append(result[idx].Fields, Field{
+				ID:            fID.Int64,
+				ContentTypeID: fCTID.Int64,
+				Name:          fName.String,
+				Type:          FieldType(fType.String),
+				Required:      fRequired.Bool,
+				Order:         int(fOrder.Int32),
+			})
+		}
 	}
-	return types, rows.Err()
+	return result, rows.Err()
 }
 
 func (r *Repository) UpdateContentType(ctx context.Context, ct *ContentType) error {
@@ -85,6 +126,25 @@ func (r *Repository) AddField(ctx context.Context, f *Field) error {
 func (r *Repository) DeleteField(ctx context.Context, id int64) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM fields WHERE id = $1`, id)
 	return err
+}
+
+// ReorderFields sets the "order" of each field according to the provided slice of IDs.
+func (r *Repository) ReorderFields(ctx context.Context, ctID int64, fieldIDs []int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for i, id := range fieldIDs {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE fields SET "order" = $1 WHERE id = $2 AND content_type_id = $3`,
+			i, id, ctID,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (r *Repository) getFields(ctx context.Context, contentTypeID int64) ([]Field, error) {

@@ -284,16 +284,18 @@ function empty(lucideIcon, title, desc, action='') {
 }
 function badge(text, color='slate') {
   const c = {
-    slate: 'background:#f1f5f9;color:#475569',
-    green: 'background:#ecfdf5;color:#059669;outline:1px solid rgba(5,150,105,.2)',
-    red:   'background:#fef2f2;color:#dc2626;outline:1px solid rgba(220,38,38,.15)',
-    pink:  'background:#fde8ee;color:#f6245b;outline:1px solid rgba(246,36,91,.2)',
+    slate:  'background:#f1f5f9;color:#475569',
+    green:  'background:#ecfdf5;color:#059669;outline:1px solid rgba(5,150,105,.2)',
+    red:    'background:#fef2f2;color:#dc2626;outline:1px solid rgba(220,38,38,.15)',
+    pink:   'background:#fde8ee;color:#f6245b;outline:1px solid rgba(246,36,91,.2)',
+    orange: 'background:#fff7ed;color:#c2410c;outline:1px solid rgba(234,88,12,.2)',
+    blue:   'background:#eff6ff;color:#2563eb;outline:1px solid rgba(37,99,235,.15)',
   };
   return `<span style="display:inline-flex;align-items:center;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:500;${c[color]||c.slate}">${text}</span>`;
 }
 function setContent(html) {
   document.getElementById('page-content').innerHTML =
-    `<div class="fade-in p-6 lg:p-8 max-w-6xl mx-auto">${html}</div>`;
+    `<div class="fade-in p-6 lg:p-8">${html}</div>`;
   renderIcons();
 }
 function btn(label, onclick, type='primary', icon='') {
@@ -454,14 +456,20 @@ function statCard(label, value, icon, bgColor, iconColor, onclick) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  CONTENT TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── Content types state ─────────────────────────────────────────────────────
+let _ctAll  = [];   // full dataset
+let _ctPage = 1;
+const CT_PER_PAGE = 8;
+
 async function renderContentTypes() {
   document.getElementById('topbar-actions').innerHTML = btn('Nouveau type','openNewCTModal()','primary','plus');
   renderIcons();
   setContent(skeletonRows());
   const r = await api('/api/content-types'); if(!r) return;
-  const types = await r.json() ?? [];
+  _ctAll  = await r.json() ?? [];
+  _ctPage = 1;
 
-  if(!types?.length) {
+  if (!_ctAll.length) {
     setContent(empty('layers','Aucun type de contenu',
       'Créez votre premier type pour commencer à modéliser votre contenu.',
       btn('Créer un type','openNewCTModal()','primary','plus')));
@@ -469,12 +477,33 @@ async function renderContentTypes() {
   }
 
   setContent(`
-    <div class="flex items-center justify-between mb-5">
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
       <div>
         <h2 class="text-lg font-bold text-slate-900">Types de contenu</h2>
-        <p class="text-xs text-slate-500 mt-0.5">${types.length} type${types.length>1?'s':''} défini${types.length>1?'s':''}</p>
+        <p id="ct-result-label" class="text-xs text-slate-500 mt-0.5"></p>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+
+        <!-- Search -->
+        <div class="relative">
+          <i data-lucide="search" style="width:13px;height:13px;color:#94a3b8;position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none"></i>
+          <input id="ct-search" oninput="_ctPage=1;renderCTTable()"
+            class="form-input text-sm pl-8 pr-3 py-2" style="width:210px"
+            placeholder="Rechercher un type…"/>
+        </div>
+
+        <!-- Filter -->
+        <select id="ct-filter" onchange="_ctPage=1;renderCTTable()" class="form-input text-sm py-2" style="width:160px">
+          <option value="all">Tous les types</option>
+          <option value="with">Avec champs</option>
+          <option value="without">Sans champs</option>
+        </select>
+
       </div>
     </div>
+
+    <!-- Table card -->
     <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
       <table class="w-full">
         <thead>
@@ -486,103 +515,253 @@ async function renderContentTypes() {
             <th class="px-5 py-3"></th>
           </tr>
         </thead>
-        <tbody>
-          ${types.map((ct,i)=>`
-            <tr style="${i<types.length-1?'border-bottom:1px solid #f8fafc':''}" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
-              <td class="px-5 py-3.5">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0" style="background:#021a42">
-                    ${esc(ct.name[0]?.toUpperCase())}
-                  </div>
-                  <span class="text-sm font-semibold text-slate-800">${esc(ct.name)}</span>
-                </div>
-              </td>
-              <td class="px-5 py-3.5"><code class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg font-mono">${esc(ct.slug)}</code></td>
-              <td class="px-5 py-3.5">${badge((ct.fields?.length??0)+' champ'+(ct.fields?.length!==1?'s':''))}</td>
-              <td class="px-5 py-3.5"><code class="text-xs text-slate-400 font-mono">/v1/${esc(ct.slug)}</code></td>
-              <td class="px-5 py-3.5">
-                <div class="flex items-center justify-end gap-1">
-                  <button onclick="openBuilderModal(${ct.id},'${esc(ct.name)}')" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors" style="color:#021a42" onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
-                    <i data-lucide="list" style="width:12px;height:12px"></i> Champs
-                  </button>
-                  <button onclick="openEntries(${ct.id},'${esc(ct.name)}')" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors" style="color:#021a42" onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
-                    <i data-lucide="file-text" style="width:12px;height:12px"></i> Entrées
-                  </button>
-                  <button onclick="deleteCT(${ct.id})" class="p-1.5 rounded-lg transition-colors" style="color:#94a3b8" onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.color='#94a3b8';this.style.background=''">
-                    <i data-lucide="trash-2" style="width:13px;height:13px"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>`).join('')}
-        </tbody>
+        <tbody id="ct-tbody"></tbody>
       </table>
-    </div>`);
+      <!-- Pagination bar -->
+      <div id="ct-pagination" class="px-5 py-3 flex items-center justify-between" style="border-top:1px solid #f1f5f9;display:none!important"></div>
+    </div>
+  `);
+
+  renderCTTable();
+}
+
+function renderCTTable() {
+  const q      = (document.getElementById('ct-search')?.value ?? '').toLowerCase().trim();
+  const filter = document.getElementById('ct-filter')?.value ?? 'all';
+
+  const filtered = _ctAll.filter(ct => {
+    const fc = ct.fields?.length ?? ct.field_count ?? 0;
+    const matchQ = !q || ct.name.toLowerCase().includes(q) || ct.slug.toLowerCase().includes(q);
+    const matchF = filter === 'all'
+      || (filter === 'with'    && fc > 0)
+      || (filter === 'without' && fc === 0);
+    return matchQ && matchF;
+  });
+
+  const total      = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / CT_PER_PAGE));
+  if (_ctPage > totalPages) _ctPage = totalPages;
+  const start = (_ctPage - 1) * CT_PER_PAGE;
+  const page  = filtered.slice(start, start + CT_PER_PAGE);
+
+  // Label
+  const lbl = document.getElementById('ct-result-label');
+  if (lbl) lbl.textContent = q || filter !== 'all'
+    ? `${total} résultat${total>1?'s':''} sur ${_ctAll.length}`
+    : `${total} type${total>1?'s':''} défini${total>1?'s':''}`;
+
+  // Rows
+  const tbody = document.getElementById('ct-tbody');
+  if (!tbody) return;
+
+  if (!page.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-5 py-16 text-center">
+      <div class="flex flex-col items-center gap-2">
+        <i data-lucide="search-x" style="width:28px;height:28px;color:#cbd5e1"></i>
+        <p class="text-sm font-semibold text-slate-500">Aucun résultat</p>
+        <p class="text-xs text-slate-400">Essayez un autre terme ou réinitialisez les filtres.</p>
+        <button onclick="document.getElementById('ct-search').value='';document.getElementById('ct-filter').value='all';_ctPage=1;renderCTTable()"
+          class="mt-1 text-xs font-semibold underline" style="color:#021a42">Réinitialiser</button>
+      </div>
+    </td></tr>`;
+    renderIcons();
+    renderCTPagination(total, totalPages);
+    return;
+  }
+
+  tbody.innerHTML = page.map((ct, i) => {
+    const fc = ct.fields?.length ?? ct.field_count ?? 0;
+    const fcLabel = fc === 0 ? 'Aucun' : String(fc);
+    const fcBadge = fc === 0
+      ? `<span style="display:inline-flex;align-items:center;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:500;background:#f1f5f9;color:#94a3b8">Aucun</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:600;background:rgba(2,26,66,.07);color:#021a42">
+           <i data-lucide="layout-list" style="width:10px;height:10px"></i>${fc} champ${fc>1?'s':''}
+         </span>`;
+    return `
+      <tr style="${i < page.length-1 ? 'border-bottom:1px solid #f8fafc' : ''}"
+        onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+
+        <!-- Nom -->
+        <td class="px-5 py-3.5">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
+              style="background:linear-gradient(135deg,#021a42,#032d6b)">
+              ${esc((ct.name[0]??'?').toUpperCase())}
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-slate-800">${esc(ct.name)}</p>
+              ${ct.description ? `<p class="text-[11px] text-slate-400 truncate max-w-[160px]">${esc(ct.description)}</p>` : ''}
+            </div>
+          </div>
+        </td>
+
+        <!-- Slug -->
+        <td class="px-5 py-3.5">
+          <code class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg font-mono">${esc(ct.slug)}</code>
+        </td>
+
+        <!-- Champs -->
+        <td class="px-5 py-3.5">${fcBadge}</td>
+
+        <!-- Endpoint -->
+        <td class="px-5 py-3.5">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded" style="background:#eff6ff;color:#1d4ed8">GET</span>
+            <code class="text-xs text-slate-400 font-mono">/v1/${esc(ct.slug)}</code>
+          </div>
+        </td>
+
+        <!-- Actions -->
+        <td class="px-5 py-3.5">
+          <div class="flex items-center justify-end gap-1.5">
+            <button onclick="openBuilderModal(${ct.id},'${esc(ct.name)}')"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style="color:#021a42" onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
+              <i data-lucide="list" style="width:12px;height:12px"></i> Champs
+            </button>
+            <button onclick="openEntries(${ct.id},'${esc(ct.name)}')"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style="color:#021a42" onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
+              <i data-lucide="file-text" style="width:12px;height:12px"></i> Entrées
+            </button>
+            <button onclick="deleteCT(${ct.id})"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style="color:#dc2626;background:#fef2f2;border:1px solid rgba(220,38,38,.12)"
+              onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+              <i data-lucide="trash-2" style="width:12px;height:12px"></i> Supprimer
+            </button>
+          </div>
+        </td>
+
+      </tr>`;
+  }).join('');
+
+  renderCTPagination(total, totalPages);
+  renderIcons();
+}
+
+function renderCTPagination(total, totalPages) {
+  const el = document.getElementById('ct-pagination');
+  if (!el) return;
+
+  if (totalPages <= 1 && total > 0) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+
+  const start = (_ctPage - 1) * CT_PER_PAGE + 1;
+  const end   = Math.min(_ctPage * CT_PER_PAGE, total);
+
+  // Build page buttons — show at most 5 around current page
+  const range = [];
+  let from = Math.max(1, _ctPage - 2);
+  let to   = Math.min(totalPages, from + 4);
+  if (to - from < 4) from = Math.max(1, to - 4);
+  for (let p = from; p <= to; p++) range.push(p);
+
+  const pgBtn = (p, label, disabled=false) => {
+    const active = p === _ctPage;
+    return `<button onclick="_ctPage=${p};renderCTTable()" ${disabled?'disabled':''}
+      class="w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors"
+      style="${active ? 'background:#021a42;color:#fff' : 'color:#64748b;background:#f8fafc'}"
+      onmouseover="if(!${active}&&!${disabled})this.style.background='#e8edf5'"
+      onmouseout="if(!${active})this.style.background='${active?'#021a42':'#f8fafc'}'">${label}</button>`;
+  };
+
+  el.innerHTML = `
+    <p class="text-xs text-slate-400">${total > 0 ? `${start}–${end} sur ${total}` : '0 résultat'}</p>
+    <div class="flex items-center gap-1">
+      ${pgBtn(_ctPage-1,'<i data-lucide="chevron-left" style="width:13px;height:13px"></i>', _ctPage<=1)}
+      ${from > 1 ? pgBtn(1,'1') + (from > 2 ? `<span class="text-xs text-slate-300 px-0.5">…</span>` : '') : ''}
+      ${range.map(p => pgBtn(p, String(p))).join('')}
+      ${to < totalPages ? (to < totalPages-1 ? `<span class="text-xs text-slate-300 px-0.5">…</span>` : '') + pgBtn(totalPages, String(totalPages)) : ''}
+      ${pgBtn(_ctPage+1,'<i data-lucide="chevron-right" style="width:13px;height:13px"></i>', _ctPage>=totalPages)}
+    </div>`;
+  renderIcons();
 }
 
 function openNewCTModal() {
+  document.getElementById('modal-box').style.maxWidth = '620px';
   modal(`
     <div>
-      <!-- Header -->
-      <div class="px-6 pt-6 pb-5 flex items-center justify-between" style="border-bottom:1px solid #f1f5f9">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(2,26,66,.08)">
-            <i data-lucide="layers" style="width:18px;height:18px;color:#021a42"></i>
+      <!-- Header banner -->
+      <div class="px-7 pt-7 pb-6 flex items-start justify-between" style="background:linear-gradient(135deg,#021a42 0%,#032d6b 100%);border-radius:16px 16px 0 0">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style="background:rgba(246,36,91,.2);border:1.5px solid rgba(246,36,91,.3)">
+            <i data-lucide="layers" style="width:22px;height:22px;color:#f6245b"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-slate-900">Nouveau type de contenu</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Définissez la structure de votre collection</p>
+            <h3 class="text-lg font-bold text-white leading-tight">Nouveau type de contenu</h3>
+            <p class="text-xs mt-1" style="color:rgba(255,255,255,.45)">Définissez la structure de votre collection</p>
           </div>
         </div>
-        <button onclick="closeModal()" style="color:#94a3b8" onmouseover="this.style.color='#334155'" onmouseout="this.style.color='#94a3b8'">
+        <button onclick="closeModal()" class="mt-1 rounded-lg p-1 transition-colors" style="color:rgba(255,255,255,.35)" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.color='rgba(255,255,255,.35)';this.style.background=''">
           <i data-lucide="x" style="width:18px;height:18px"></i>
         </button>
       </div>
 
       <!-- Form -->
       <form id="ct-form">
-        <div class="px-6 py-5 space-y-5">
+        <div class="px-7 pt-6 pb-4 space-y-5">
 
-          <!-- Name -->
-          <div>
-            <label class="form-label">Nom d'affichage <span style="color:#f6245b">*</span></label>
-            <input name="name" id="ct-name" required class="form-input" placeholder="ex: Articles, Produits, Auteurs…"
-              oninput="ctNameInput(this.value)"/>
-            <p class="text-xs text-slate-400 mt-1.5">Le nom tel qu'il apparaît dans l'interface.</p>
+          <!-- Name + API ID side by side -->
+          <div class="grid grid-cols-2 gap-4">
+
+            <!-- Display name -->
+            <div>
+              <label class="form-label">Nom d'affichage <span style="color:#f6245b">*</span></label>
+              <input name="name" id="ct-name" required class="form-input" placeholder="ex: Articles, Produits…"
+                oninput="ctNameInput(this.value)"/>
+              <p class="text-[11px] text-slate-400 mt-1.5 leading-snug">Affiché dans l'interface admin.</p>
+            </div>
+
+            <!-- API ID -->
+            <div>
+              <label class="form-label">API ID <span style="color:#f6245b">*</span></label>
+              <div class="flex items-center rounded-xl overflow-hidden" style="border:1px solid #e2e8f0">
+                <span class="px-2.5 py-2.5 text-xs font-mono text-slate-400 shrink-0 leading-none" style="background:#f8fafc;border-right:1px solid #e2e8f0">/v1/</span>
+                <input name="slug" id="ct-slug" required
+                  class="flex-1 px-2.5 py-2.5 text-sm font-mono text-slate-800 bg-white outline-none min-w-0"
+                  placeholder="articles"
+                  oninput="this.value=slugify(this.value)"
+                  onfocus="this.parentElement.style.borderColor='#021a42';this.parentElement.style.boxShadow='0 0 0 3px rgba(2,26,66,.08)'"
+                  onblur="this.parentElement.style.borderColor='#e2e8f0';this.parentElement.style.boxShadow=''"/>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-1.5 leading-snug">Auto-généré depuis le nom.</p>
+            </div>
           </div>
 
-          <!-- API ID -->
-          <div>
-            <label class="form-label">API ID <span style="color:#f6245b">*</span></label>
-            <div class="flex items-center gap-0 rounded-xl overflow-hidden" style="border:1px solid #e2e8f0">
-              <span class="px-3 py-2.5 text-xs font-mono text-slate-400 shrink-0" style="background:#f8fafc;border-right:1px solid #e2e8f0">/v1/</span>
-              <input name="slug" id="ct-slug" required
-                class="flex-1 px-3 py-2.5 text-sm font-mono text-slate-800 bg-white outline-none"
-                placeholder="articles"
-                oninput="this.value=slugify(this.value)"
-                onfocus="this.parentElement.style.borderColor='#021a42';this.parentElement.style.boxShadow='0 0 0 3px rgba(2,26,66,.08)'"
-                onblur="this.parentElement.style.borderColor='#e2e8f0';this.parentElement.style.boxShadow=''"/>
+          <!-- Endpoint preview pill -->
+          <div id="ct-preview-wrap" class="hidden items-center gap-2.5 px-4 py-3 rounded-xl" style="background:rgba(2,26,66,.04);border:1px solid rgba(2,26,66,.08)">
+            <div class="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style="background:#021a42">
+              <i data-lucide="zap" style="width:10px;height:10px;color:#fff"></i>
             </div>
-            <p class="text-xs text-slate-400 mt-1.5">Utilisé dans l'URL de l'API publique. Auto-généré depuis le nom.</p>
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <span class="text-[11px] font-semibold text-slate-400 shrink-0">Endpoint public :</span>
+              <code id="ct-preview" class="text-[12px] font-mono font-bold truncate" style="color:#021a42"></code>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style="background:#ecfdf5;color:#059669">GET</span>
           </div>
 
           <!-- Description -->
           <div>
-            <label class="form-label">Description <span class="text-slate-400 font-normal normal-case tracking-normal">(optionnel)</span></label>
-            <textarea name="description" rows="2" class="form-input resize-none" placeholder="À quoi sert cette collection ?"></textarea>
+            <label class="form-label">
+              Description
+              <span class="ml-1 text-slate-400 font-normal normal-case tracking-normal">(optionnel)</span>
+            </label>
+            <textarea name="description" rows="3" class="form-input resize-none" placeholder="À quoi sert cette collection ? Ex: stocke les articles du blog, les produits du catalogue…"></textarea>
           </div>
 
         </div>
 
         <!-- Footer -->
-        <div class="px-6 py-4 flex items-center justify-between" style="border-top:1px solid #f1f5f9;background:#fafafa;border-radius:0 0 16px 16px">
-          <div id="ct-preview" class="text-xs text-slate-400 font-mono"></div>
-          <div class="flex gap-2">
-            <button type="button" onclick="closeModal()" class="btn-secondary">Annuler</button>
-            <button type="submit" id="ct-submit" class="btn-primary">
-              <i data-lucide="save" style="width:13px;height:13px"></i>
-              Créer la collection
-            </button>
-          </div>
+        <div class="px-7 py-4 flex items-center justify-end gap-3" style="border-top:1px solid #f1f5f9;background:#fafafa;border-radius:0 0 16px 16px">
+          <button type="button" onclick="closeModal()" class="btn-secondary">Annuler</button>
+          <button type="submit" id="ct-submit" class="btn-primary">
+            <i data-lucide="layers" style="width:13px;height:13px"></i>
+            Créer la collection
+          </button>
         </div>
       </form>
     </div>`);
@@ -607,14 +786,36 @@ function ctNameInput(val) {
   const slug = slugify(val);
   document.getElementById('ct-slug').value = slug;
   const prev = document.getElementById('ct-preview');
-  if(prev) prev.textContent = slug ? `GET /v1/${slug}` : '';
+  const wrap = document.getElementById('ct-preview-wrap');
+  if (prev) prev.textContent = slug ? `GET /v1/${slug}` : '';
+  if (wrap) {
+    if (slug) { wrap.classList.remove('hidden'); wrap.style.display = 'flex'; }
+    else       { wrap.classList.add('hidden');    wrap.style.display = ''; }
+  }
 }
 
 async function deleteCT(id) {
-  if(!confirm('Supprimer ce type et toutes ses entrées ?')) return;
-  const r = await api(`/api/content-types/${id}`,{method:'DELETE'});
-  if(r?.ok) { toast('Type supprimé'); renderContentTypes(); }
-  else { const d = await apiJSON(r); toast(d?.error??'Erreur','error'); }
+  const ct = _ctAll.find(c => c.id === id);
+  confirmModal({
+    title:  `Supprimer "${esc(ct?.name ?? 'ce type')}" ?`,
+    desc:   'Toutes les entrées de cette collection seront également supprimées. Cette action est irréversible.',
+    label:  'Supprimer le type',
+    icon:   'layers',
+    onConfirm: async () => {
+      const r = await api(`/api/content-types/${id}`, { method:'DELETE' });
+      if (r?.ok) {
+        toast('Type supprimé');
+        _ctAll = _ctAll.filter(c => c.id !== id);
+        const totalPages = Math.max(1, Math.ceil(_ctAll.length / CT_PER_PAGE));
+        if (_ctPage > totalPages) _ctPage = totalPages;
+        if (!_ctAll.length) { renderContentTypes(); return; }
+        renderCTTable();
+      } else {
+        const d = await apiJSON(r);
+        toast(d?.error ?? 'Erreur', 'error');
+      }
+    }
+  });
 }
 
 // ─── Builder ─────────────────────────────────────────────────────────────────
@@ -636,80 +837,92 @@ const FIELD_TYPES = [
 const FIELD_MAP    = Object.fromEntries(FIELD_TYPES.map(t=>[t.value,t]));
 
 async function openBuilderModal(ctID, ctName) {
+  document.getElementById('modal-box').style.maxWidth = '820px';
   modal(`
     <div>
-      <!-- Header -->
-      <div class="px-6 pt-6 pb-4 flex items-center justify-between" style="border-bottom:1px solid #f1f5f9">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center" style="background:rgba(2,26,66,.08)">
-            <i data-lucide="list-plus" style="width:16px;height:16px;color:#021a42"></i>
+      <!-- Header banner -->
+      <div class="px-7 pt-7 pb-6 flex items-start justify-between" style="background:linear-gradient(135deg,#021a42 0%,#032d6b 100%);border-radius:16px 16px 0 0">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style="background:rgba(246,36,91,.2);border:1.5px solid rgba(246,36,91,.3)">
+            <i data-lucide="list-plus" style="width:22px;height:22px;color:#f6245b"></i>
           </div>
           <div>
-            <h3 class="text-sm font-bold text-slate-900">${esc(ctName)}</h3>
-            <p class="text-xs text-slate-400 mt-0.5">Builder de champs</p>
+            <h3 class="text-lg font-bold text-white leading-tight">${esc(ctName)}</h3>
+            <p class="text-xs mt-1" style="color:rgba(255,255,255,.45)">Builder de champs — définissez la structure de votre collection</p>
           </div>
         </div>
-        <button onclick="closeModal()" style="color:#94a3b8" onmouseover="this.style.color='#334155'" onmouseout="this.style.color='#94a3b8'">
+        <button onclick="closeModal()" class="mt-1 rounded-lg p-1 transition-colors" style="color:rgba(255,255,255,.35)" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.color='rgba(255,255,255,.35)';this.style.background=''">
           <i data-lucide="x" style="width:18px;height:18px"></i>
         </button>
       </div>
 
-      <!-- Existing fields -->
-      <div class="px-6 py-4">
-        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Champs existants</p>
-        <div id="fields-list" class="space-y-1.5 min-h-[40px]">${loader()}</div>
-      </div>
+      <!-- 2-panel body -->
+      <div class="flex min-h-[420px]" style="border-top:none">
 
-      <!-- Add field section -->
-      <div class="px-6 pb-2 pt-2" style="border-top:1px solid #f1f5f9">
-        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Ajouter un champ</p>
-        <form id="field-form" class="space-y-4">
-
-          <!-- Field name -->
-          <div>
-            <label class="form-label">Nom du champ <span style="color:#f6245b">*</span></label>
-            <input name="name" id="field-name-input" required class="form-input" placeholder="ex: titre, slug, description…"
-              oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')"/>
-            <p class="text-xs text-slate-400 mt-1">Lettres, chiffres et underscore uniquement.</p>
+        <!-- LEFT — existing fields -->
+        <div class="w-64 shrink-0 flex flex-col" style="border-right:1px solid #f1f5f9">
+          <div class="px-5 pt-5 pb-3">
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Champs définis</p>
           </div>
+          <div id="fields-list" class="flex-1 px-4 pb-5 space-y-1.5 overflow-y-auto">${loader()}</div>
+        </div>
 
-          <!-- Type picker grid -->
-          <div>
-            <label class="form-label">Type de champ <span style="color:#f6245b">*</span></label>
-            <input type="hidden" name="type" id="field-type-input" value="text"/>
-            <div class="grid grid-cols-2 gap-2" id="type-grid">
-              ${FIELD_TYPES.map(t=>`
-                <button type="button" onclick="selectFieldType('${t.value}')" id="ft-${t.value}"
-                  class="field-type-btn flex items-start gap-2.5 p-2.5 rounded-xl text-left transition-all"
-                  style="background:#f8fafc;border:1.5px solid #f1f5f9">
-                  <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style="background:${t.color}18">
-                    <i data-lucide="${t.icon}" style="width:13px;height:13px;color:${t.color}"></i>
-                  </div>
-                  <div class="min-w-0">
-                    <p class="text-xs font-bold text-slate-700 leading-tight">${t.label}</p>
-                    <p class="text-[10px] text-slate-400 leading-tight mt-0.5 line-clamp-1">${t.desc}</p>
-                  </div>
-                </button>`).join('')}
-            </div>
-          </div>
+        <!-- RIGHT — add field form -->
+        <div class="flex-1 flex flex-col min-w-0">
+          <form id="field-form" class="flex flex-col flex-1">
 
-          <!-- Required toggle + submit -->
-          <div class="flex items-center justify-between py-3" style="border-top:1px solid #f1f5f9">
-            <label class="flex items-center gap-2.5 cursor-pointer select-none">
-              <div class="relative">
-                <input type="checkbox" name="required" id="field-required" class="sr-only peer"/>
-                <div class="w-9 h-5 rounded-full transition-colors peer-checked:bg-[#021a42]" style="background:#e2e8f0"></div>
-                <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+            <div class="px-6 pt-5 pb-4 space-y-4">
+
+              <!-- Field name -->
+              <div>
+                <label class="form-label">Nom du champ <span style="color:#f6245b">*</span></label>
+                <input name="name" id="field-name-input" required class="form-input"
+                  placeholder="ex: titre, slug, description…"
+                  oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')"/>
+                <p class="text-[11px] text-slate-400 mt-1.5">Lettres, chiffres et underscore uniquement.</p>
               </div>
-              <span class="text-sm font-medium text-slate-600">Champ obligatoire</span>
-            </label>
-            <button type="submit" class="btn-primary">
-              <i data-lucide="plus" style="width:13px;height:13px"></i>
-              Ajouter le champ
-            </button>
-          </div>
 
-        </form>
+              <!-- Type picker — 3 cols -->
+              <div>
+                <label class="form-label">Type de champ <span style="color:#f6245b">*</span></label>
+                <input type="hidden" name="type" id="field-type-input" value="text"/>
+                <div class="grid grid-cols-3 gap-2" id="type-grid">
+                  ${FIELD_TYPES.map(t=>`
+                    <button type="button" onclick="selectFieldType('${t.value}')" id="ft-${t.value}"
+                      class="field-type-btn flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all"
+                      style="background:#f8fafc;border:1.5px solid #f1f5f9">
+                      <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${t.color}18">
+                        <i data-lucide="${t.icon}" style="width:13px;height:13px;color:${t.color}"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-xs font-bold text-slate-700 leading-tight truncate">${t.label}</p>
+                        <p class="text-[10px] text-slate-400 leading-tight mt-0.5 truncate">${t.desc}</p>
+                      </div>
+                    </button>`).join('')}
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Footer — required toggle + submit -->
+            <div class="mt-auto px-6 py-4 flex items-center justify-between" style="border-top:1px solid #f1f5f9;background:#fafafa;border-radius:0 16px 16px 0">
+              <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                <div class="relative">
+                  <input type="checkbox" name="required" id="field-required" class="sr-only peer"/>
+                  <div class="w-9 h-5 rounded-full transition-colors peer-checked:bg-[#021a42]" style="background:#e2e8f0"></div>
+                  <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+                </div>
+                <span class="text-sm font-medium text-slate-600">Champ obligatoire</span>
+              </label>
+              <button type="submit" class="btn-primary">
+                <i data-lucide="plus" style="width:13px;height:13px"></i>
+                Ajouter le champ
+              </button>
+            </div>
+
+          </form>
+        </div>
+
       </div>
     </div>`);
 
@@ -747,96 +960,422 @@ function selectFieldType(value) {
   });
 }
 
+// ─── Drag-and-drop state ─────────────────────────────────────────────────────
+let _builderFields = []; // current field list in the open builder modal
+let _dragSrcIdx    = -1; // index of the item being dragged
+
 async function loadFields(ctID) {
-  const r = await api(`/api/content-types/${ctID}`);
+  const r  = await api(`/api/content-types/${ctID}`);
   const ct = await r?.json();
+
+  // ── Sync _ctAll cache so the datatable count stays accurate ──────────────
+  const cacheIdx = _ctAll.findIndex(c => c.id === ctID);
+  if (cacheIdx !== -1 && ct) {
+    _ctAll[cacheIdx] = { ..._ctAll[cacheIdx], fields: ct.fields ?? [] };
+    // Re-render the table row count in the background if the table is visible
+    if (document.getElementById('ct-tbody')) renderCTTable();
+  }
+
+  _builderFields = ct?.fields ?? [];
   const c = document.getElementById('fields-list');
-  if(!ct?.fields?.length) {
-    c.innerHTML = `<div class="flex items-center gap-2 text-sm text-slate-400 rounded-xl px-4 py-3" style="background:#f8fafc;border:1px dashed #e2e8f0">
-      <i data-lucide="inbox" style="width:14px;height:14px;color:#cbd5e1"></i>
-      Aucun champ — ajoutez-en un ci-dessous
-    </div>`;
+  if (!c) return;
+
+  if (!_builderFields.length) {
+    c.innerHTML = `
+      <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+          <i data-lucide="inbox" style="width:18px;height:18px;color:#cbd5e1"></i>
+        </div>
+        <p class="text-xs font-semibold text-slate-400">Aucun champ</p>
+        <p class="text-[11px] text-slate-300 leading-snug">Ajoutez votre premier<br/>champ à droite →</p>
+      </div>`;
     renderIcons(); return;
   }
-  c.innerHTML = ct.fields.map(f=>{
-    const ft = FIELD_MAP[f.type] ?? { icon:'type', color:'#94a3b8', label: f.type };
+
+  c.innerHTML = _builderFields.map((f, i) => {
+    const ft = FIELD_MAP[f.type] ?? { icon:'type', color:'#94a3b8', label:f.type };
     return `
-    <div class="flex items-center justify-between rounded-xl px-3 py-2.5 group" style="background:#f8fafc;border:1px solid #f1f5f9">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${ft.color}15">
-          <i data-lucide="${ft.icon}" style="width:12px;height:12px;color:${ft.color}"></i>
-        </div>
-        <span class="text-sm font-semibold text-slate-800 truncate">${esc(f.name)}</span>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style="background:${ft.color}12;color:${ft.color}">${ft.label}</span>
-        ${f.required?`<span class="text-[10px] font-bold shrink-0" style="color:#f6245b">requis</span>`:''}
+    <div
+      draggable="true"
+      data-field-idx="${i}"
+      ondragstart="dfStart(event,${i})"
+      ondragover="dfOver(event)"
+      ondragleave="dfLeave(event)"
+      ondrop="dfDrop(event,${ctID},${i})"
+      ondragend="dfEnd()"
+      class="group flex items-center gap-2 rounded-xl px-2.5 py-2 transition-colors cursor-grab select-none"
+      style="border:1px solid #f1f5f9;background:#f8fafc">
+
+      <!-- Drag handle -->
+      <i data-lucide="grip-vertical" style="width:13px;height:13px;color:#cbd5e1;flex-shrink:0"></i>
+
+      <!-- Icon -->
+      <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style="background:${ft.color}15">
+        <i data-lucide="${ft.icon}" style="width:11px;height:11px;color:${ft.color}"></i>
       </div>
-      <button onclick="deleteField(${ctID},${f.id})" class="shrink-0 p-1.5 rounded-lg transition-all" style="color:#e2e8f0"
-        onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.color='#e2e8f0';this.style.background=''">
-        <i data-lucide="trash-2" style="width:13px;height:13px"></i>
+
+      <!-- Info -->
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold text-slate-800 truncate leading-tight">${esc(f.name)}</p>
+        <div class="flex items-center gap-1 mt-0.5">
+          <span class="text-[10px] font-semibold px-1 py-px rounded" style="background:${ft.color}12;color:${ft.color}">${ft.label}</span>
+          ${f.required ? `<span class="text-[10px] font-bold" style="color:#f6245b">*</span>` : ''}
+        </div>
+      </div>
+
+      <!-- Delete -->
+      <button onclick="deleteField(${ctID},${f.id})"
+        class="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded-lg transition-all"
+        style="color:#cbd5e1"
+        onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
+        onmouseout="this.style.color='#cbd5e1';this.style.background=''">
+        <i data-lucide="trash-2" style="width:11px;height:11px"></i>
       </button>
     </div>`;
   }).join('');
   renderIcons();
 }
 
+// ─── Drag-and-drop handlers ───────────────────────────────────────────────────
+function dfStart(e, idx) {
+  _dragSrcIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(idx));
+  // Slight delay so the ghost image renders before opacity change
+  requestAnimationFrame(() => { if (e.target) e.target.style.opacity = '0.35'; });
+}
+
+function dfOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.style.borderColor = '#021a42';
+  e.currentTarget.style.background  = 'rgba(2,26,66,.05)';
+}
+
+function dfLeave(e) {
+  e.currentTarget.style.borderColor = '#f1f5f9';
+  e.currentTarget.style.background  = '#f8fafc';
+}
+
+function dfEnd() {
+  _dragSrcIdx = -1;
+  document.querySelectorAll('[data-field-idx]').forEach(el => {
+    el.style.opacity     = '1';
+    el.style.borderColor = '#f1f5f9';
+    el.style.background  = '#f8fafc';
+  });
+}
+
+async function dfDrop(e, ctID, targetIdx) {
+  e.preventDefault();
+  dfEnd();
+  if (_dragSrcIdx < 0 || _dragSrcIdx === targetIdx) return;
+
+  // Reorder locally
+  const updated = [..._builderFields];
+  const [moved]  = updated.splice(_dragSrcIdx, 1);
+  updated.splice(targetIdx, 0, moved);
+
+  // Optimistic render
+  _builderFields = updated;
+  const c = document.getElementById('fields-list');
+  if (c) {
+    // Quick visual reorder without full re-render
+    const items = [...c.querySelectorAll('[data-field-idx]')];
+    const draggedEl = items[_dragSrcIdx < 0 ? 0 : _dragSrcIdx] ?? items[0];
+    // Just call loadFields after API — fast enough
+  }
+
+  const r = await api(`/api/content-types/${ctID}/fields/reorder`, {
+    method: 'PUT',
+    body: JSON.stringify({ field_ids: updated.map(f => f.id) })
+  });
+
+  if (r?.ok) {
+    await loadFields(ctID);
+  } else {
+    toast('Erreur lors de la réorganisation', 'error');
+    await loadFields(ctID); // reset to server state
+  }
+}
+
 async function deleteField(ctID, fid) {
-  await api(`/api/content-types/${ctID}/fields/${fid}`,{method:'DELETE'});
-  await loadFields(ctID); toast('Champ supprimé');
+  await api(`/api/content-types/${ctID}/fields/${fid}`, { method:'DELETE' });
+  await loadFields(ctID);
+  toast('Champ supprimé');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ENTRIES
 // ═══════════════════════════════════════════════════════════════════════════════
-let currentCT = null;
+let currentCT    = null;
+let _entryTypes  = []; // all CTs for the sidebar
+let _entryAll    = []; // full entry dataset for current CT
+let _entryPage   = 1;
+const ENTRY_PER_PAGE = 10;
 
 function openEntries(id, name) { currentCT={id,name}; nav('entries'); }
 
 async function renderEntries() {
-  setContent(skeletonRows());
+  document.getElementById('topbar-actions').innerHTML = '';
+  document.getElementById('page-content').innerHTML = `
+    <div class="flex h-full items-center justify-center">${loader()}</div>`;
+
   const r = await api('/api/content-types'); if(!r) return;
-  const types = await r.json()??[];
-  if(!types.length) {
-    setContent(empty('file-text','Aucun type de contenu',"Créez d'abord un type pour pouvoir ajouter des entrées."));
-    return;
+  _entryTypes = await r.json() ?? [];
+
+  if (!_entryTypes.length) {
+    document.getElementById('page-content').innerHTML = `
+      <div class="flex h-full items-center justify-center p-10">
+        ${empty('layers','Aucun type de contenu',
+          "Créez d'abord un type de contenu pour pouvoir ajouter des entrées.",
+          btn('Créer un type','openNewCTModal()','primary','plus'))}
+      </div>`;
+    renderIcons(); return;
   }
-  if(!currentCT) currentCT = types[0];
 
-  document.getElementById('topbar-actions').innerHTML = btn('Nouvelle entrée','openEntryEditor(null)','primary','plus');
-  renderIcons();
+  if (!currentCT) currentCT = _entryTypes[0];
 
-  setContent(`
-    <div class="flex items-center gap-3 mb-5 flex-wrap">
-      <div class="flex items-center gap-2 flex-1">
-        <label class="text-xs text-slate-500 font-medium shrink-0">Type :</label>
-        <select id="ct-select" onchange="changeCT(this)" class="form-input text-sm w-52">
-          ${types.map(t=>`<option value="${t.id}" data-name="${esc(t.name)}" ${currentCT?.id==t.id?'selected':''}>${esc(t.name)}</option>`).join('')}
-        </select>
+  // Full-height 2-panel layout — no setContent() wrapper
+  document.getElementById('page-content').innerHTML = `
+    <div class="flex h-full overflow-hidden fade-in">
+
+      <!-- ═══ LEFT PANEL — Collection list ═══ -->
+      <div class="w-56 shrink-0 flex flex-col h-full overflow-hidden" style="background:#fafafa;border-right:1px solid #f0f4f8">
+
+        <!-- Header -->
+        <div class="px-4 pt-5 pb-3 shrink-0">
+          <p class="text-[10px] font-bold uppercase tracking-widest mb-3" style="color:#94a3b8">Collections</p>
+          <div class="relative">
+            <i data-lucide="search" style="width:12px;height:12px;color:#94a3b8;position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none"></i>
+            <input id="entry-ct-search" oninput="filterEntrySidebar(this.value)"
+              class="form-input text-xs py-2 pl-7 w-full" placeholder="Filtrer…"/>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div id="entry-ct-list" class="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
+          ${_entryTypes.map(t => entrySideItem(t, t.id === currentCT?.id)).join('')}
+        </div>
+
+        <!-- New type shortcut -->
+        <div class="px-3 py-3 shrink-0" style="border-top:1px solid #f0f4f8">
+          <button onclick="nav('content-types')"
+            class="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+            style="color:#64748b"
+            onmouseover="this.style.background='rgba(2,26,66,.06)';this.style.color='#021a42'"
+            onmouseout="this.style.background='';this.style.color='#64748b'">
+            <i data-lucide="layers" style="width:12px;height:12px"></i>
+            Gérer les types
+          </button>
+        </div>
+
       </div>
-      <p id="entries-count" class="text-xs text-slate-400 font-medium"></p>
-    </div>
-    <div id="entries-table">${loader()}</div>`);
+
+      <!-- ═══ RIGHT PANEL — Entries ═══ -->
+      <div class="flex-1 flex flex-col overflow-hidden bg-slate-50">
+
+        <!-- Right sub-header -->
+        <div class="px-6 py-3.5 shrink-0 flex items-center justify-between bg-white" style="border-bottom:1px solid #f0f4f8">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
+              style="background:linear-gradient(135deg,#021a42,#032d6b)">
+              ${esc((currentCT.name[0] ?? '?').toUpperCase())}
+            </div>
+            <div>
+              <h2 id="entries-ct-name" class="text-sm font-bold text-slate-900">${esc(currentCT.name)}</h2>
+              <p id="entries-count" class="text-[11px] text-slate-400 mt-px">Chargement…</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="openBuilderModal(currentCT.id, currentCT.name)"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style="color:#021a42;border:1px solid #e2e8f0;background:#f8fafc"
+              onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background='#f8fafc'">
+              <i data-lucide="list" style="width:12px;height:12px"></i> Champs
+            </button>
+            <button onclick="openEntryEditor(null)"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-opacity hover:opacity-85"
+              style="background:#021a42;color:#fff">
+              <i data-lucide="plus" style="width:12px;height:12px"></i> Nouvelle entrée
+            </button>
+          </div>
+        </div>
+
+        <!-- Toolbar: search + filter + count -->
+        <div class="shrink-0 px-6 py-3 flex items-center gap-3 bg-white" style="border-bottom:1px solid #f0f4f8">
+          <div class="relative flex-1 max-w-xs">
+            <i data-lucide="search" style="width:13px;height:13px;color:#94a3b8;position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"></i>
+            <input id="entry-search" oninput="_entryPage=1;renderEntryTable()"
+              class="form-input text-xs py-2 pl-8 w-full" placeholder="Rechercher une entrée…"
+              style="border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"/>
+          </div>
+          <select id="entry-filter" onchange="_entryPage=1;renderEntryTable()"
+            class="form-input text-xs py-2 px-3 cursor-pointer"
+            style="border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#475569">
+            <option value="all">Tous les statuts</option>
+            <option value="published">Publié</option>
+            <option value="draft">Brouillon</option>
+          </select>
+          <span id="entries-count-toolbar" class="text-xs text-slate-400 ml-auto whitespace-nowrap"></span>
+        </div>
+
+        <!-- Entries scroll area -->
+        <div id="entries-table" class="flex-1 overflow-y-auto p-6">
+          ${loader()}
+        </div>
+
+      </div>
+    </div>`;
+
+  renderIcons();
   await loadEntriesTable(currentCT.id);
 }
 
-function changeCT(sel) {
-  currentCT={id:parseInt(sel.value),name:sel.selectedOptions[0]?.dataset.name};
-  loadEntriesTable(currentCT.id);
+// ─── Sidebar item ─────────────────────────────────────────────────────────────
+function entrySideItem(t, active) {
+  const fc = t.fields?.length ?? 0;
+  return `
+    <button onclick="selectEntryCT(${t.id},'${esc(t.name)}')"
+      data-ctid="${t.id}"
+      class="entry-ct-btn w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors"
+      style="${active ? 'background:rgba(2,26,66,.08)' : ''}">
+      <div class="entry-ct-avatar w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors"
+        style="background:${active ? '#021a42' : '#e2e8f0'};color:${active ? '#fff' : '#64748b'}">
+        ${esc((t.name[0] ?? '?').toUpperCase())}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="entry-ct-label text-xs font-semibold truncate transition-colors"
+          style="color:${active ? '#021a42' : '#475569'}">${esc(t.name)}</p>
+        <p class="text-[10px] mt-px" style="color:#94a3b8">${fc} champ${fc !== 1 ? 's' : ''}</p>
+      </div>
+      <span class="entry-ct-dot w-1.5 h-1.5 rounded-full shrink-0 transition-opacity"
+        style="background:#f6245b;opacity:${active ? '1' : '0'}"></span>
+    </button>`;
 }
 
+// ─── Select a CT in sidebar ───────────────────────────────────────────────────
+function selectEntryCT(id, name) {
+  currentCT = { id, name };
+
+  // Update sidebar active states
+  document.querySelectorAll('.entry-ct-btn').forEach(btn => {
+    const isActive = parseInt(btn.dataset.ctid) === id;
+    btn.style.background = isActive ? 'rgba(2,26,66,.08)' : '';
+    const avatar = btn.querySelector('.entry-ct-avatar');
+    if (avatar) { avatar.style.background = isActive ? '#021a42' : '#e2e8f0'; avatar.style.color = isActive ? '#fff' : '#64748b'; }
+    const label = btn.querySelector('.entry-ct-label');
+    if (label) label.style.color = isActive ? '#021a42' : '#475569';
+    const dot = btn.querySelector('.entry-ct-dot');
+    if (dot) dot.style.opacity = isActive ? '1' : '0';
+  });
+
+  // Update right panel header
+  const nameEl  = document.getElementById('entries-ct-name');
+  const countEl = document.getElementById('entries-count');
+  if (nameEl)  nameEl.textContent  = name;
+  if (countEl) countEl.textContent = 'Chargement…';
+
+  // Update avatar letter
+  const avatarMain = document.querySelector('#entries-ct-name')?.closest('div')?.previousElementSibling;
+
+  // Reset entry state for new CT
+  _entryAll  = [];
+  _entryPage = 1;
+  const srch = document.getElementById('entry-search');
+  const filt = document.getElementById('entry-filter');
+  if (srch) srch.value = '';
+  if (filt) filt.value = 'all';
+  const ctb = document.getElementById('entries-count-toolbar');
+  if (ctb) ctb.textContent = '';
+
+  // Reload entries
+  const tbl = document.getElementById('entries-table');
+  if (tbl) { tbl.innerHTML = loader(); renderIcons(); }
+  loadEntriesTable(id);
+}
+
+// ─── Filter sidebar ───────────────────────────────────────────────────────────
+function filterEntrySidebar(q) {
+  const lower = q.toLowerCase().trim();
+  const filtered = lower
+    ? _entryTypes.filter(t => t.name.toLowerCase().includes(lower) || t.slug.toLowerCase().includes(lower))
+    : _entryTypes;
+  const list = document.getElementById('entry-ct-list');
+  if (list) {
+    list.innerHTML = filtered.length
+      ? filtered.map(t => entrySideItem(t, t.id === currentCT?.id)).join('')
+      : `<p class="text-xs text-slate-400 text-center py-4">Aucun résultat</p>`;
+    renderIcons();
+  }
+}
+
+// ─── Load entries (fetch + store in _entryAll) ────────────────────────────────
 async function loadEntriesTable(ctID) {
   const r = await api(`/api/content-types/${ctID}/entries`);
-  const entries = await r?.json()??[];
-  document.getElementById('entries-count').textContent = `${entries.length} entrée${entries.length>1?'s':''}`;
+  _entryAll  = await r?.json() ?? [];
+  _entryPage = 1;
+
+  // reset toolbar
+  const srch = document.getElementById('entry-search');
+  const filt = document.getElementById('entry-filter');
+  if (srch) srch.value = '';
+  if (filt) filt.value = 'all';
+
+  renderEntryTable();
+}
+
+// ─── Render entries (filter + paginate) ──────────────────────────────────────
+function renderEntryTable() {
+  const ctID   = currentCT?.id;
+  const q      = (document.getElementById('entry-search')?.value ?? '').toLowerCase().trim();
+  const filter = document.getElementById('entry-filter')?.value ?? 'all';
+
+  const filtered = _entryAll.filter(e => {
+    const isPublished = !!e.published_at;
+    const matchF = filter === 'all'
+      || (filter === 'published' && isPublished)
+      || (filter === 'draft'     && !isPublished);
+    if (!matchF) return false;
+    if (!q) return true;
+    // search in id + all data values
+    if (String(e.id).includes(q)) return true;
+    return Object.values(e.data ?? {}).some(v => String(v).toLowerCase().includes(q));
+  });
+
+  // update counts
+  const countEl  = document.getElementById('entries-count');
+  const countTb  = document.getElementById('entries-count-toolbar');
+  const label    = `${filtered.length} entrée${filtered.length !== 1 ? 's' : ''}`;
+  if (countEl)  countEl.textContent  = label;
+  if (countTb)  countTb.textContent  = label;
+
   const c = document.getElementById('entries-table');
-  if(!entries.length) {
-    c.innerHTML = empty('file-text','Aucune entrée',
-      `Créez votre première entrée${currentCT?.name?' dans "'+esc(currentCT.name)+'"':''}.`,
-      btn('Nouvelle entrée','openEntryEditor(null)','primary','plus'));
+  if (!c) return;
+
+  if (!filtered.length) {
+    c.innerHTML = _entryAll.length
+      ? `<div class="flex flex-col items-center justify-center py-20 text-center">
+           <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style="background:#f1f5f9">
+             <i data-lucide="search-x" style="width:20px;height:20px;color:#94a3b8"></i>
+           </div>
+           <p class="text-sm font-semibold text-slate-700 mb-1">Aucun résultat</p>
+           <p class="text-xs text-slate-400">Essayez d'autres termes ou réinitialisez les filtres</p>
+         </div>`
+      : empty('file-text','Aucune entrée',
+          `Aucune entrée dans "${esc(currentCT?.name ?? '')}" — créez-en une.`,
+          btn('Nouvelle entrée','openEntryEditor(null)','primary','plus'));
     renderIcons(); return;
   }
-  const keys = Object.keys(entries[0]?.data??{}).slice(0,3);
+
+  const totalPages = Math.ceil(filtered.length / ENTRY_PER_PAGE);
+  if (_entryPage > totalPages) _entryPage = totalPages;
+  const start  = (_entryPage - 1) * ENTRY_PER_PAGE;
+  const page   = filtered.slice(start, start + ENTRY_PER_PAGE);
+  const keys   = Object.keys(_entryAll[0]?.data ?? {}).slice(0, 4);
+
   c.innerHTML = `
-    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm mb-4">
       <table class="w-full">
         <thead>
           <tr style="border-bottom:1px solid #f1f5f9">
@@ -847,26 +1386,79 @@ async function loadEntriesTable(ctID) {
           </tr>
         </thead>
         <tbody>
-          ${entries.map((e,i)=>`
-            <tr style="${i<entries.length-1?'border-bottom:1px solid #f8fafc':''}" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+          ${page.map((e, i) => `
+            <tr style="${i < page.length-1 ? 'border-bottom:1px solid #f8fafc' : ''}"
+              onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
               <td class="px-5 py-3.5 text-xs text-slate-400 font-mono">${e.id}</td>
-              ${keys.map(k=>`<td class="px-5 py-3.5 text-sm text-slate-700 max-w-[180px] truncate">${esc(String(e.data?.[k]??'—'))}</td>`).join('')}
-              <td class="px-5 py-3.5">${e.published_at?badge('Publié','green'):badge('Brouillon','slate')}</td>
+              ${keys.map(k=>`<td class="px-5 py-3.5 text-sm text-slate-700 max-w-[200px] truncate">${esc(String(e.data?.[k] ?? '—'))}</td>`).join('')}
+              <td class="px-5 py-3.5">${e.published_at ? badge('Publié','green') : badge('Brouillon','slate')}</td>
               <td class="px-5 py-3.5">
                 <div class="flex items-center justify-end gap-1">
-                  <button onclick="openEntryEditor(${e.id})" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg" style="color:#021a42" onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
+                  <button onclick="openEntryEditor(${e.id})"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                    style="color:#021a42"
+                    onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
                     <i data-lucide="pencil" style="width:12px;height:12px"></i> Éditer
                   </button>
-                  <button onclick="deleteEntry(${ctID},${e.id})" class="p-1.5 rounded-lg" style="color:#94a3b8" onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'" onmouseout="this.style.color='#94a3b8';this.style.background=''">
-                    <i data-lucide="trash-2" style="width:13px;height:13px"></i>
+                  <button onclick="deleteEntry(${ctID},${e.id})"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                    style="color:#dc2626;background:#fef2f2;border:1px solid rgba(220,38,38,.12)"
+                    onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+                    <i data-lucide="trash-2" style="width:12px;height:12px"></i>
                   </button>
                 </div>
               </td>
             </tr>`).join('')}
         </tbody>
       </table>
-    </div>`;
+    </div>
+    ${renderEntryPagination(filtered.length, totalPages)}`;
   renderIcons();
+}
+
+// ─── Entry pagination controls ────────────────────────────────────────────────
+function renderEntryPagination(total, totalPages) {
+  if (totalPages <= 1) return '';
+  const cur = _entryPage;
+
+  const pages = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || (p >= cur - 1 && p <= cur + 1)) {
+      pages.push(p);
+    } else if (pages[pages.length - 1] !== '…') {
+      pages.push('…');
+    }
+  }
+
+  const pgBtn = (p, label) => {
+    const isActive = p === cur;
+    const isDots   = p === '…';
+    if (isDots) return `<span class="px-2 py-1 text-xs text-slate-400">…</span>`;
+    return `<button onclick="_entryPage=${p};renderEntryTable()"
+      class="w-8 h-8 flex items-center justify-center text-xs font-semibold rounded-lg transition-colors"
+      style="${isActive ? 'background:#021a42;color:#fff' : 'color:#475569'}
+             ${!isActive ? ';hover:background:#f1f5f9' : ''}"
+      onmouseover="${!isActive ? "this.style.background='#f1f5f9'" : ''}"
+      onmouseout="${!isActive ? "this.style.background=''" : ''}">${label ?? p}</button>`;
+  };
+
+  return `
+    <div class="flex items-center justify-between">
+      <p class="text-xs text-slate-400">Page ${cur} sur ${totalPages} · ${total} entrée${total !== 1 ? 's' : ''}</p>
+      <div class="flex items-center gap-1">
+        <button onclick="if(_entryPage>1){_entryPage--;renderEntryTable();}"
+          class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+          style="color:${cur===1?'#cbd5e1':'#475569'}" ${cur===1?'disabled':''}>
+          <i data-lucide="chevron-left" style="width:14px;height:14px"></i>
+        </button>
+        ${pages.map(p => pgBtn(p, p)).join('')}
+        <button onclick="if(_entryPage<${totalPages}){_entryPage++;renderEntryTable();}"
+          class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+          style="color:${cur===totalPages?'#cbd5e1':'#475569'}" ${cur===totalPages?'disabled':''}>
+          <i data-lucide="chevron-right" style="width:14px;height:14px"></i>
+        </button>
+      </div>
+    </div>`;
 }
 
 async function openEntryEditor(entryID) {
@@ -947,27 +1539,63 @@ async function openEntryEditor(entryID) {
     </div>`;
   renderIcons();
 
-  document.getElementById('entry-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const data = {};
-    ct.fields?.forEach(f=>{
-      if(f.type==='boolean') data[f.name]=fd.has(f.name);
-      else if(f.type==='number') data[f.name]=parseFloat(fd.get(f.name))||0;
-      else data[f.name]=fd.get(f.name)??'';
-    });
-    const body = {data, published_at: document.getElementById('pub').checked?new Date().toISOString():null};
-    const url = entryID?`/api/content-types/${currentCT.id}/entries/${entryID}`:`/api/content-types/${currentCT.id}/entries`;
-    const r = await api(url,{method:entryID?'PUT':'POST',body:JSON.stringify(body)});
-    if(r?.ok) { closeModal(); toast(entryID?'Entrée mise à jour !':'Entrée créée !'); await loadEntriesTable(currentCT.id); }
-    else toast((await apiJSON(r))?.error??'Erreur','error');
-  };
+  // Widen modal for entry editor
+  document.getElementById('modal-box').style.maxWidth = '680px';
+
+  const entryForm = document.getElementById('entry-form');
+  if (entryForm) {
+    entryForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd   = new FormData(e.target);
+      const data = {};
+      ct.fields?.forEach(f => {
+        if (f.type === 'boolean') {
+          data[f.name] = fd.has(f.name);
+        } else if (f.type === 'number') {
+          data[f.name] = parseFloat(fd.get(f.name)) || 0;
+        } else if (f.type === 'json' || f.type === 'blocks') {
+          const raw = fd.get(f.name) ?? '';
+          try { data[f.name] = JSON.parse(raw); } catch { data[f.name] = raw; }
+        } else {
+          data[f.name] = fd.get(f.name) ?? '';
+        }
+      });
+      const pub  = document.getElementById('pub');
+      const body = { data, published_at: pub?.checked ? new Date().toISOString() : null };
+      const url  = entryID
+        ? `/api/content-types/${currentCT.id}/entries/${entryID}`
+        : `/api/content-types/${currentCT.id}/entries`;
+
+      // Disable save button while submitting
+      const saveBtn = document.querySelector('[onclick^="submitEntry"]');
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.style.opacity = '.6'; }
+
+      const r = await api(url, { method: entryID ? 'PUT' : 'POST', body: JSON.stringify(body) });
+
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
+
+      if (r?.ok) {
+        closeModal();
+        toast(entryID ? 'Entrée mise à jour !' : 'Entrée créée !');
+        await loadEntriesTable(currentCT.id);
+      } else {
+        toast((await apiJSON(r))?.error ?? 'Erreur', 'error');
+      }
+    };
+  }
 }
 
 async function deleteEntry(ctID, id) {
-  if(!confirm('Supprimer cette entrée ?')) return;
-  await api(`/api/content-types/${ctID}/entries/${id}`,{method:'DELETE'});
-  toast('Entrée supprimée'); await loadEntriesTable(ctID);
+  confirmModal({
+    title: 'Supprimer cette entrée ?',
+    desc:  'Cette entrée sera définitivement supprimée et ne pourra pas être restaurée.',
+    label: 'Supprimer l\'entrée',
+    onConfirm: async () => {
+      const r = await api(`/api/content-types/${ctID}/entries/${id}`, { method:'DELETE' });
+      if (r?.ok) { toast('Entrée supprimée'); await loadEntriesTable(ctID); }
+      else toast((await apiJSON(r))?.error ?? 'Erreur', 'error');
+    }
+  });
 }
 
 // ─── Field input renderer ────────────────────────────────────────────────────
@@ -1124,126 +1752,380 @@ async function uploadFiles(files) {
 }
 
 async function deleteMedia(id) {
-  if(!confirm('Supprimer ce média ?')) return;
-  await api(`/api/media/${id}`,{method:'DELETE'});
-  toast('Média supprimé'); renderMedia();
+  confirmModal({
+    title: 'Supprimer ce média ?',
+    desc:  'Le fichier sera définitivement supprimé. Les entrées qui l\'utilisent pourraient être affectées.',
+    label: 'Supprimer le média',
+    icon:  'image',
+    onConfirm: async () => {
+      const r = await api(`/api/media/${id}`, { method:'DELETE' });
+      if (r?.ok) { toast('Média supprimé'); renderMedia(); }
+      else toast((await apiJSON(r))?.error ?? 'Erreur', 'error');
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  API KEYS
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function keyTypeBadge(type) {
+  return type === 'private'
+    ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#fef3c7;color:#92400e">
+         <i data-lucide="lock" style="width:9px;height:9px"></i> Privée
+       </span>`
+    : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#dbeafe;color:#1d4ed8">
+         <i data-lucide="globe" style="width:9px;height:9px"></i> Publique
+       </span>`;
+}
+
+function keyStatusBadge(k) {
+  if (k.revoked_at) return badge('Révoquée','red');
+  if (k.expires_at && new Date(k.expires_at) < new Date()) return badge('Expirée','slate');
+  if (k.expires_at) {
+    const days = Math.ceil((new Date(k.expires_at) - new Date()) / 86400000);
+    return badge(`Expire dans ${days}j`, days < 7 ? 'orange' : 'green');
+  }
+  return badge('Active','green');
+}
+
+function keyExpiry(k) {
+  if (!k.expires_at) return '<span class="text-slate-400 text-xs">—</span>';
+  return `<span class="text-xs ${new Date(k.expires_at)<new Date()?'text-red-500':'text-slate-500'}">${new Date(k.expires_at).toLocaleDateString('fr')}</span>`;
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
 async function renderAPIKeys() {
   document.getElementById('topbar-actions').innerHTML = btn('Nouvelle clé','openNewKeyModal()','primary','plus');
   renderIcons();
   setContent(skeletonRows(3));
-  const r = await api('/api/keys'); if(!r) return;
-  const keys = await r.json()??[];
+  const r = await api('/api/keys'); if (!r) return;
+  const keys = await r.json() ?? [];
+
+  const active  = keys.filter(k => !k.revoked_at && (!k.expires_at || new Date(k.expires_at) > new Date()));
+  const revoked = keys.filter(k =>  k.revoked_at || ( k.expires_at && new Date(k.expires_at) <= new Date()));
 
   setContent(`
+    <!-- Usage banner -->
     <div class="rounded-2xl p-5 mb-6 flex items-start gap-4" style="background:#021a42;border:1px solid #032d6b">
       <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(246,36,91,.15)">
         <i data-lucide="terminal" style="width:17px;height:17px;color:#f6245b"></i>
       </div>
-      <div>
-        <p class="text-sm font-bold text-white mb-1.5">Utilisation de l'API publique</p>
-        <pre class="text-[11px] leading-relaxed overflow-x-auto" style="color:#86efac"><code>curl ${location.origin}/v1/<span style="color:#f6245b">{slug}</span> \\
-  -H <span style="color:#fde68a">"X-API-Key: mut_xxxx"</span></code></pre>
-        <p class="text-xs mt-2" style="color:rgba(255,255,255,.35)">Les clés donnent un accès en lecture aux entrées publiées.</p>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold text-white mb-2">Utilisation de l'API publique</p>
+        <pre class="text-[11px] leading-relaxed overflow-x-auto mb-2" style="color:#86efac"><code>curl ${location.origin}/v1/<span style="color:#f6245b">{slug}</span> \\
+  -H <span style="color:#fde68a">"X-API-Key: mut_pub_xxxx"</span>     <span style="color:rgba(255,255,255,.3)"># clé publique</span>
+  -H <span style="color:#fde68a">"X-API-Key: mut_prv_xxxx"</span>     <span style="color:rgba(255,255,255,.3)"># clé privée (server-to-server)</span></code></pre>
+        <div class="flex items-center gap-4 mt-2">
+          <span class="flex items-center gap-1.5 text-[11px]" style="color:rgba(255,255,255,.45)">
+            <i data-lucide="globe" style="width:11px;height:11px;color:#60a5fa"></i>
+            <span style="color:#93c5fd">Publique</span> — navigateur, apps front-end
+          </span>
+          <span class="flex items-center gap-1.5 text-[11px]" style="color:rgba(255,255,255,.45)">
+            <i data-lucide="lock" style="width:11px;height:11px;color:#fbbf24"></i>
+            <span style="color:#fde68a">Privée</span> — server-to-server, back-end
+          </span>
+        </div>
+      </div>
+      <div class="shrink-0 text-right">
+        <p class="text-[11px] mb-1" style="color:rgba(255,255,255,.3)">Clés actives</p>
+        <p class="text-2xl font-bold text-white">${active.length}</p>
       </div>
     </div>
-    ${keys.length
-      ? `<div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-          <table class="w-full">
-            <thead><tr style="border-bottom:1px solid #f1f5f9">
-              <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nom</th>
-              <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Préfixe</th>
-              <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dernière utilisation</th>
-              <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Créée le</th>
-              <th class="px-5 py-3"></th>
-            </tr></thead>
-            <tbody>
-              ${keys.map((k,i)=>`
-                <tr style="${i<keys.length-1?'border-bottom:1px solid #f8fafc':''}" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
-                  <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-2.5">
-                      <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(246,36,91,.08)">
-                        <i data-lucide="key-round" style="width:13px;height:13px;color:#f6245b"></i>
-                      </div>
-                      <span class="text-sm font-semibold text-slate-800">${esc(k.name)}</span>
-                    </div>
-                  </td>
-                  <td class="px-5 py-3.5"><code class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg font-mono">${esc(k.prefix)}…</code></td>
-                  <td class="px-5 py-3.5 text-xs text-slate-500">${k.last_used_at?new Date(k.last_used_at).toLocaleDateString('fr'):'—'}</td>
-                  <td class="px-5 py-3.5 text-xs text-slate-500">${new Date(k.created_at).toLocaleDateString('fr')}</td>
-                  <td class="px-5 py-3.5 text-right">
-                    <button onclick="revokeKey(${k.id})" class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg ml-auto" style="color:#dc2626" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background=''">
-                      <i data-lucide="trash-2" style="width:12px;height:12px"></i> Révoquer
-                    </button>
-                  </td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>`
-      : empty('key-round','Aucune clé API','Créez une clé pour accéder à votre contenu depuis vos applications.',
-          btn('Créer une clé','openNewKeyModal()','primary','plus'))}
+
+    <!-- Active keys table -->
+    ${active.length ? `
+    <div class="mb-2 flex items-center justify-between">
+      <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Clés actives</p>
+    </div>
+    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm mb-6">
+      <table class="w-full">
+        <thead><tr style="border-bottom:1px solid #f1f5f9">
+          <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nom</th>
+          <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Type</th>
+          <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Préfixe</th>
+          <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Expiration</th>
+          <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Dernier usage</th>
+          <th class="px-5 py-3"></th>
+        </tr></thead>
+        <tbody>
+          ${active.map((k,i)=>`
+            <tr style="${i<active.length-1?'border-bottom:1px solid #f8fafc':''}" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+              <td class="px-5 py-3.5">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:${k.type==='private'?'rgba(251,191,36,.12)':'rgba(96,165,250,.12)'}">
+                    <i data-lucide="${k.type==='private'?'lock':'globe'}" style="width:13px;height:13px;color:${k.type==='private'?'#d97706':'#3b82f6'}"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-slate-800">${esc(k.name)}</p>
+                    ${k.description?`<p class="text-[11px] text-slate-400 truncate max-w-[160px]">${esc(k.description)}</p>`:''}
+                  </div>
+                </div>
+              </td>
+              <td class="px-5 py-3.5">${keyTypeBadge(k.type)}</td>
+              <td class="px-5 py-3.5"><code class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg font-mono">${esc(k.prefix)}…</code></td>
+              <td class="px-5 py-3.5">${keyExpiry(k)}</td>
+              <td class="px-5 py-3.5 text-xs text-slate-500">${k.last_used_at?new Date(k.last_used_at).toLocaleDateString('fr',{day:'2-digit',month:'short',year:'numeric'}):'Jamais'}</td>
+              <td class="px-5 py-3.5">
+                <div class="flex items-center justify-end gap-1">
+                  <button onclick="rotateKey(${k.id},'${esc(k.name)}')"
+                    class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                    style="color:#021a42"
+                    onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background=''">
+                    <i data-lucide="refresh-cw" style="width:11px;height:11px"></i> Rotation
+                  </button>
+                  <button onclick="revokeKey(${k.id})"
+                    class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                    style="color:#dc2626"
+                    onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background=''">
+                    <i data-lucide="trash-2" style="width:11px;height:11px"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : empty('key-round','Aucune clé active','Créez une clé pour accéder à votre contenu depuis vos applications.',
+        btn('Créer une clé','openNewKeyModal()','primary','plus'))}
+
+    <!-- Revoked / expired keys (collapsible) -->
+    ${revoked.length ? `
+    <details ontoggle="this.querySelector('.chev').style.transform=this.open?'rotate(90deg)':''">
+      <summary class="cursor-pointer list-none flex items-center gap-2 mb-3 select-none">
+        <i data-lucide="chevron-right" class="chev" style="width:14px;height:14px;color:#94a3b8;transition:transform .15s"></i>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Révoquées / expirées (${revoked.length})</p>
+      </summary>
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm opacity-70">
+        <table class="w-full">
+          <thead><tr style="border-bottom:1px solid #f1f5f9">
+            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nom</th>
+            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Type</th>
+            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Préfixe</th>
+            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Statut</th>
+            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Date</th>
+          </tr></thead>
+          <tbody>
+            ${revoked.map((k,i)=>`
+              <tr style="${i<revoked.length-1?'border-bottom:1px solid #f8fafc':''}">
+                <td class="px-5 py-3 text-sm text-slate-500 line-through">${esc(k.name)}</td>
+                <td class="px-5 py-3">${keyTypeBadge(k.type)}</td>
+                <td class="px-5 py-3"><code class="text-xs bg-slate-100 text-slate-400 px-2 py-1 rounded-lg font-mono">${esc(k.prefix)}…</code></td>
+                <td class="px-5 py-3">${keyStatusBadge(k)}</td>
+                <td class="px-5 py-3 text-xs text-slate-400">${k.revoked_at?new Date(k.revoked_at).toLocaleDateString('fr'):new Date(k.expires_at).toLocaleDateString('fr')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </details>` : ''}
   `);
 }
 
+// ─── Create modal ─────────────────────────────────────────────────────────────
 function openNewKeyModal() {
+  document.getElementById('modal-box').style.maxWidth = '560px';
   modal(`
-    <div class="p-6">
-      <div class="flex items-center gap-3 mb-6">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(246,36,91,.08)">
-          <i data-lucide="key-round" style="width:17px;height:17px;color:#f6245b"></i>
+    <div>
+      <!-- Header -->
+      <div class="px-6 pt-6 pb-5 flex items-center gap-3" style="background:linear-gradient(135deg,#021a42,#032d6b);border-radius:20px 20px 0 0">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(246,36,91,.18)">
+          <i data-lucide="key-round" style="width:18px;height:18px;color:#f6245b"></i>
         </div>
         <div>
-          <h3 class="text-base font-bold text-slate-900">Créer une clé API</h3>
-          <p class="text-xs text-slate-400 mt-0.5">La clé ne sera affichée qu'une seule fois</p>
+          <h3 class="text-base font-bold text-white">Nouvelle clé API</h3>
+          <p class="text-xs mt-0.5" style="color:rgba(255,255,255,.45)">La valeur complète ne sera affichée qu'une seule fois</p>
         </div>
       </div>
-      <form id="key-form" class="space-y-4">
+
+      <!-- Form -->
+      <form id="key-form" class="p-6 space-y-5">
+
+        <!-- Name -->
         <div>
           <label class="form-label">Nom de la clé *</label>
-          <input name="name" required class="form-input" placeholder="ex: Frontend production"/>
+          <input name="name" required class="form-input" placeholder="ex: Frontend production, Mobile app…"/>
         </div>
-        <div class="flex justify-end gap-2">
+
+        <!-- Description -->
+        <div>
+          <label class="form-label">Description <span class="text-slate-400 font-normal">(optionnel)</span></label>
+          <input name="description" class="form-input" placeholder="ex: Utilisée par le site vitrine"/>
+        </div>
+
+        <!-- Type picker -->
+        <div>
+          <label class="form-label mb-2">Type de clé</label>
+          <div class="grid grid-cols-2 gap-3" id="key-type-grid">
+            <label class="relative cursor-pointer">
+              <input type="radio" name="type" value="public" checked class="peer sr-only"/>
+              <div class="flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50"
+                style="border-color:#e2e8f0">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:#dbeafe">
+                  <i data-lucide="globe" style="width:14px;height:14px;color:#3b82f6"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-slate-800">Publique</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed">Navigateur, apps front-end. Préfixe <code class="font-mono">mut_pub_</code></p>
+                </div>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="type" value="private" class="peer sr-only"/>
+              <div class="flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all peer-checked:border-amber-400 peer-checked:bg-amber-50"
+                style="border-color:#e2e8f0">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:#fef3c7">
+                  <i data-lucide="lock" style="width:14px;height:14px;color:#d97706"></i>
+                </div>
+                <div>
+                  <p class="text-xs font-bold text-slate-800">Privée</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed">Server-to-server. Ne jamais exposer côté client. Préfixe <code class="font-mono">mut_prv_</code></p>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Expiry -->
+        <div>
+          <label class="form-label">Expiration <span class="text-slate-400 font-normal">(optionnel)</span></label>
+          <select name="expires_in_days" class="form-input" style="border:1px solid #e2e8f0;border-radius:10px;cursor:pointer">
+            <option value="0">Jamais</option>
+            <option value="30">30 jours</option>
+            <option value="90">90 jours</option>
+            <option value="180">6 mois</option>
+            <option value="365">1 an</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-2.5 pt-1">
           <button type="button" onclick="closeModal()" class="btn-secondary">Annuler</button>
-          <button type="submit" class="btn-primary">Générer la clé</button>
-        </div>
-      </form>
-      <div id="key-result" class="hidden mt-5 rounded-xl p-4" style="background:#f0fdf4;border:1px solid rgba(5,150,105,.15)">
-        <div class="flex items-center gap-2 mb-3">
-          <i data-lucide="check-circle" style="width:16px;height:16px;color:#059669"></i>
-          <p class="text-sm font-bold text-emerald-700">Clé créée — copiez-la maintenant !</p>
-        </div>
-        <div class="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5" style="background:#fff;border:1px solid rgba(5,150,105,.15)">
-          <code id="key-value" class="text-xs text-emerald-800 break-all flex-1 font-mono"></code>
-          <button onclick="copyTxt(document.getElementById('key-value').textContent)" class="shrink-0 p-1 rounded-lg transition-colors" style="color:#059669" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background=''">
-            <i data-lucide="copy" style="width:14px;height:14px"></i>
+          <button type="submit" id="key-submit-btn" class="btn-primary">
+            <i data-lucide="sparkles" style="width:13px;height:13px"></i> Générer la clé
           </button>
         </div>
+      </form>
+
+      <!-- Result (shown after creation) -->
+      <div id="key-result" class="hidden mx-6 mb-6 rounded-xl p-4" style="background:#f0fdf4;border:1px solid rgba(5,150,105,.2)">
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="check-circle" style="width:16px;height:16px;color:#059669"></i>
+          <p class="text-sm font-bold text-emerald-700">Clé générée — copiez-la maintenant !</p>
+        </div>
+        <p class="text-[11px] text-emerald-600 mb-3">Cette valeur ne sera plus jamais affichée. Conservez-la dans votre gestionnaire de secrets.</p>
+        <div class="flex items-center gap-2 rounded-lg px-3 py-2.5" style="background:#fff;border:1px solid rgba(5,150,105,.2)">
+          <code id="key-value" class="text-xs text-emerald-800 break-all flex-1 font-mono select-all"></code>
+          <button id="key-copy-btn" onclick="copyTxt(document.getElementById('key-value').textContent)"
+            class="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
+            style="color:#059669"
+            onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background=''">
+            <i data-lucide="copy" style="width:12px;height:12px"></i> Copier
+          </button>
+        </div>
+        <button onclick="closeModal()" class="w-full mt-4 py-2 rounded-xl text-xs font-bold transition-opacity hover:opacity-80" style="background:#021a42;color:#fff">
+          Fermer
+        </button>
       </div>
     </div>`);
 
+  renderIcons();
+
   document.getElementById('key-form').onsubmit = async (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const r = await api('/api/keys',{method:'POST',body:JSON.stringify({name:fd.get('name')})});
-    if(r?.ok) {
+    const fd   = new FormData(e.target);
+    const body = {
+      name:            fd.get('name'),
+      description:     fd.get('description') ?? '',
+      type:            fd.get('type') ?? 'public',
+      expires_in_days: parseInt(fd.get('expires_in_days') ?? '0'),
+    };
+    const submitBtn = document.getElementById('key-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Génération…';
+
+    const r = await api('/api/keys', { method:'POST', body: JSON.stringify(body) });
+    if (r?.ok) {
       const d = await apiJSON(r);
       document.getElementById('key-value').textContent = d?.plaintext ?? '';
       document.getElementById('key-result').classList.remove('hidden');
-      e.target.querySelectorAll('input,button[type=submit]').forEach(el=>el.disabled=true);
+      e.target.style.display = 'none';
       renderIcons();
       renderAPIKeys();
-    } else toast((await apiJSON(r))?.error??'Erreur','error');
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="sparkles" style="width:13px;height:13px"></i> Générer la clé';
+      renderIcons();
+      toast((await apiJSON(r))?.error ?? 'Erreur', 'error');
+    }
   };
 }
 
+// ─── Rotate ───────────────────────────────────────────────────────────────────
+function rotateKey(id, name) {
+  confirmModal({
+    title:   `Effectuer une rotation de "${esc(name)}" ?`,
+    desc:    'L\'ancienne clé sera immédiatement révoquée et une nouvelle sera générée avec les mêmes paramètres. Mettez à jour vos applications avant de fermer.',
+    label:   'Rotation de la clé',
+    icon:    'refresh-cw',
+    variant: 'warning',
+    onConfirm: async () => {
+      const r = await api(`/api/keys/${id}/rotate`, { method:'POST' });
+      if (r?.ok) {
+        const d = await apiJSON(r);
+        renderAPIKeys();
+        // Show the new plaintext in a dedicated modal
+        showKeyResult(d?.plaintext ?? '', 'Rotation effectuée — nouvelle clé');
+      } else {
+        toast((await apiJSON(r))?.error ?? 'Erreur de rotation', 'error');
+      }
+    }
+  });
+}
+
+function showKeyResult(plaintext, title) {
+  document.getElementById('modal-box').style.maxWidth = '480px';
+  modal(`
+    <div class="p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:rgba(5,150,105,.1)">
+          <i data-lucide="check-circle" style="width:18px;height:18px;color:#059669"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">${esc(title)}</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Copiez la clé maintenant — elle ne sera plus jamais affichée</p>
+        </div>
+      </div>
+      <div class="rounded-xl p-4 mb-5" style="background:#f0fdf4;border:1px solid rgba(5,150,105,.2)">
+        <div class="flex items-center gap-2 rounded-lg px-3 py-2.5" style="background:#fff;border:1px solid rgba(5,150,105,.2)">
+          <code class="text-xs text-emerald-800 break-all flex-1 font-mono select-all" id="rot-key-val">${esc(plaintext)}</code>
+          <button onclick="copyTxt(document.getElementById('rot-key-val').textContent)"
+            class="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold"
+            style="color:#059669"
+            onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background=''">
+            <i data-lucide="copy" style="width:12px;height:12px"></i> Copier
+          </button>
+        </div>
+      </div>
+      <button onclick="closeModal()" class="w-full py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-80" style="background:#021a42;color:#fff">
+        Fermer
+      </button>
+    </div>`);
+  renderIcons();
+}
+
+// ─── Revoke ───────────────────────────────────────────────────────────────────
 async function revokeKey(id) {
-  if(!confirm('Révoquer cette clé ? Elle cessera immédiatement de fonctionner.')) return;
-  await api(`/api/keys/${id}`,{method:'DELETE'});
-  toast('Clé révoquée'); renderAPIKeys();
+  confirmModal({
+    title:   'Révoquer cette clé API ?',
+    desc:    'La clé cessera immédiatement de fonctionner. Préférez la rotation si vous souhaitez remplacer sans interruption.',
+    label:   'Révoquer la clé',
+    icon:    'key-round',
+    variant: 'warning',
+    onConfirm: async () => {
+      const r = await api(`/api/keys/${id}`, { method:'DELETE' });
+      if (r?.ok) { toast('Clé révoquée'); renderAPIKeys(); }
+      else toast((await apiJSON(r))?.error ?? 'Erreur', 'error');
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1404,7 +2286,46 @@ function modal(html) {
   document.getElementById('modal-overlay').classList.remove('hidden');
   renderIcons();
 }
-function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  document.getElementById('modal-box').style.maxWidth = '';
+}
+
+// ─── Confirmation modal (replaces browser confirm()) ─────────────────────────
+function confirmModal({ title, desc, label = 'Supprimer', icon = 'trash-2', variant = 'danger', onConfirm }) {
+  const colors = {
+    danger:  { bg:'#fef2f2', ring:'rgba(220,38,38,.15)', icon:'#dc2626', btn:'background:#dc2626;color:#fff;border:none' },
+    warning: { bg:'#fffbeb', ring:'rgba(245,158,11,.15)',  icon:'#d97706', btn:'background:#d97706;color:#fff;border:none' },
+  };
+  const c = colors[variant] ?? colors.danger;
+
+  modal(`
+    <div class="p-6">
+      <!-- Icon + text -->
+      <div class="flex items-start gap-4 mb-6">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+          style="background:${c.bg};outline:1px solid ${c.ring}">
+          <i data-lucide="${icon}" style="width:20px;height:20px;color:${c.icon}"></i>
+        </div>
+        <div class="pt-0.5">
+          <h3 class="text-base font-bold text-slate-900">${title}</h3>
+          <p class="text-sm text-slate-500 mt-1 leading-relaxed">${desc}</p>
+        </div>
+      </div>
+      <!-- Actions -->
+      <div class="flex items-center justify-end gap-2.5">
+        <button onclick="closeModal()" class="btn-secondary">Annuler</button>
+        <button id="_confirm-ok"
+          style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;${c.btn}"
+          onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          <i data-lucide="${icon}" style="width:13px;height:13px"></i>
+          ${label}
+        </button>
+      </div>
+    </div>`);
+
+  document.getElementById('_confirm-ok').onclick = () => { closeModal(); onConfirm(); };
+}
 document.getElementById('modal-overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('modal-overlay')) closeModal();
 });
@@ -1443,5 +2364,55 @@ init();
   .form-input:focus { border-color:#021a42;box-shadow:0 0 0 3px rgba(2,26,66,.08);outline:none; }
   select.form-input { cursor:pointer; }
 </style>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     DEV HOT-RELOAD CLIENT
+     Connects to GET /dev/reload (SSE) when APP_ENV=development.
+     • "reload" event  → page reloads (static file changed)
+     • SSE reconnect   → page reloads (server restarted via air)
+     In production the endpoint returns 404; the client backs off and stops.
+═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  var MAX_RETRIES   = 5;      // stop after 5 consecutive 404s (= production)
+  var RETRY_MS      = 2000;   // wait 2s after server restart before reconnecting
+  var retries       = 0;
+  var connected     = false;  // true once first "connected" event received
+  var es;
+
+  function connect() {
+    es = new EventSource('/dev/reload');
+
+    es.addEventListener('connected', function () {
+      retries = 0;
+      if (connected) {
+        // We were previously connected → server restarted → reload page.
+        console.log('[devreload] server restarted — reloading');
+        location.reload();
+      }
+      connected = true;
+      console.log('[devreload] hot-reload active');
+    });
+
+    es.addEventListener('reload', function () {
+      console.log('[devreload] file changed — reloading');
+      location.reload();
+    });
+
+    es.onerror = function () {
+      es.close();
+      retries++;
+      if (retries >= MAX_RETRIES) {
+        // Endpoint not found (production) — stop trying.
+        return;
+      }
+      // Server restarting — reconnect after delay; reload on successful reconnect.
+      setTimeout(connect, RETRY_MS);
+    };
+  }
+
+  connect();
+})();
+</script>
 </body>
 </html>

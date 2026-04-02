@@ -208,6 +208,31 @@ func (h *Handler) DeleteField(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ReorderFields updates the display order of fields for a content type.
+func (h *Handler) ReorderFields(w http.ResponseWriter, r *http.Request) {
+	ctID, err := pathID(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body struct {
+		FieldIDs []int64 `json:"field_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if len(body.FieldIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "field_ids required")
+		return
+	}
+	if err := h.repo.ReorderFields(r.Context(), ctID, body.FieldIDs); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Admin UI page handlers — serve the compiled static HTML shell.
 // Templ generation will replace these with proper server-side rendering.
 
