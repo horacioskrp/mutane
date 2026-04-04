@@ -460,69 +460,413 @@ function statCard(label, value, icon, bgColor, iconColor, onclick) {
 let _ctAll  = [];   // full dataset
 let _ctPage = 1;
 const CT_PER_PAGE = 8;
+let _currentCT       = null;  // selected CT in the 2-panel CT page
+let _fieldContainerId = 'fields-list'; // target for loadFields ('fields-list' = modal | 'ct-fields-list' = inline)
 
 async function renderContentTypes() {
-  document.getElementById('topbar-actions').innerHTML = btn('Nouveau type','openNewCTModal()','primary','plus');
-  renderIcons();
-  setContent(skeletonRows());
-  const r = await api('/api/content-types'); if(!r) return;
+  document.getElementById('topbar-actions').innerHTML = '';
+  document.getElementById('page-content').innerHTML =
+    `<div class="flex h-full items-center justify-center">${loader()}</div>`;
+
+  const r = await api('/api/content-types'); if (!r) return;
   _ctAll  = await r.json() ?? [];
   _ctPage = 1;
 
   if (!_ctAll.length) {
-    setContent(empty('layers','Aucun type de contenu',
-      'Créez votre premier type pour commencer à modéliser votre contenu.',
-      btn('Créer un type','openNewCTModal()','primary','plus')));
+    document.getElementById('page-content').innerHTML = `
+      <div class="flex h-full items-center justify-center p-10">
+        ${empty('layers','Aucun type de contenu',
+          'Créez votre premier type pour commencer à modéliser votre contenu.',
+          btn('Créer un type','openNewCTModal()','primary','plus'))}
+      </div>`;
+    renderIcons(); return;
+  }
+
+  // Keep selection alive across re-renders; default to first CT
+  if (!_currentCT || !_ctAll.find(c => c.id === _currentCT.id)) {
+    _currentCT = _ctAll[0];
+  }
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="flex h-full overflow-hidden fade-in">
+
+      <!-- ═══ LEFT PANEL — Collections list ═══ -->
+      <div class="w-64 shrink-0 flex flex-col h-full overflow-hidden" style="background:#fafafa;border-right:1px solid #f0f4f8">
+
+        <!-- Header -->
+        <div class="px-4 pt-5 pb-3 shrink-0">
+          <p class="text-[10px] font-bold uppercase tracking-widest mb-3" style="color:#94a3b8">Collections</p>
+          <div class="relative">
+            <i data-lucide="search" style="width:12px;height:12px;color:#94a3b8;position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none"></i>
+            <input id="ct-side-search" oninput="filterCTSidebar(this.value)"
+              class="form-input text-xs py-2 pl-7 w-full" placeholder="Filtrer…"/>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div id="ct-side-list" class="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
+          ${_ctAll.map(ct => ctSideItem(ct, ct.id === _currentCT?.id)).join('')}
+        </div>
+
+        <!-- New CT button -->
+        <div class="px-3 py-3 shrink-0" style="border-top:1px solid #f0f4f8">
+          <button onclick="openNewCTModal()"
+            class="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-85"
+            style="background:#021a42;color:#fff">
+            <i data-lucide="plus" style="width:12px;height:12px"></i>
+            Nouveau type
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ RIGHT PANEL — Fields ═══ -->
+      <div class="flex-1 flex flex-col overflow-hidden bg-slate-50">
+
+        <!-- Sub-header: CT identity + actions -->
+        <div class="px-6 py-3.5 shrink-0 flex items-center justify-between bg-white" style="border-bottom:1px solid #f0f4f8">
+          <div class="flex items-center gap-3">
+            <div id="ct-panel-avatar"
+              class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
+              style="background:linear-gradient(135deg,#021a42,#032d6b)">
+              ${esc((_currentCT.name[0] ?? '?').toUpperCase())}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 id="ct-panel-name" class="text-sm font-bold text-slate-900">${esc(_currentCT.name)}</h2>
+                <code id="ct-panel-slug" class="text-[10px] font-mono px-1.5 py-0.5 rounded" style="background:#f1f5f9;color:#64748b">${esc(_currentCT.slug)}</code>
+              </div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[10px] font-bold px-1 py-px rounded" style="background:#eff6ff;color:#1d4ed8">GET</span>
+                <code id="ct-panel-endpoint" class="text-[10px] font-mono text-slate-400">/v1/${esc(_currentCT.slug)}</code>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="openEntries(_currentCT.id, _currentCT.name)"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style="color:#021a42;border:1px solid #e2e8f0;background:#f8fafc"
+              onmouseover="this.style.background='#e8edf5'" onmouseout="this.style.background='#f8fafc'">
+              <i data-lucide="file-text" style="width:12px;height:12px"></i> Entrées
+            </button>
+            <button onclick="deleteCT(_currentCT.id)"
+              class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+              style="color:#dc2626"
+              onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background=''">
+              <i data-lucide="trash-2" style="width:12px;height:12px"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Fields toolbar -->
+        <div class="shrink-0 px-6 py-3 flex items-center gap-3 flex-wrap bg-white" style="border-bottom:1px solid #f0f4f8">
+          <p id="ct-fields-count" class="text-xs font-semibold text-slate-500 shrink-0 mr-1">Chargement…</p>
+          <div class="relative">
+            <i data-lucide="search" style="width:12px;height:12px;color:#94a3b8;position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none"></i>
+            <input id="ct-field-search" oninput="filterCTFields()" placeholder="Rechercher…"
+              class="form-input text-xs py-2 pl-7 pr-3" style="width:170px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"/>
+          </div>
+          <select id="ct-field-filter" onchange="filterCTFields()"
+            class="form-input text-xs py-2 px-3 cursor-pointer" style="border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#475569;width:150px">
+            <option value="all">Tous les types</option>
+            ${FIELD_TYPES.map(t=>`<option value="${t.value}">${t.label}</option>`).join('')}
+          </select>
+          <div class="flex-1"></div>
+          <button onclick="toggleAddFieldPanel()" id="add-field-toggle-btn"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-opacity hover:opacity-85"
+            style="background:#021a42;color:#fff">
+            <i data-lucide="plus" style="width:12px;height:12px"></i> Ajouter un champ
+          </button>
+        </div>
+
+        <!-- Fields list (scrollable) -->
+        <div id="ct-fields-list" class="flex-1 overflow-y-auto p-5 space-y-2">
+          ${loader()}
+        </div>
+
+        <!-- Add field panel (slides up from bottom) -->
+        <div id="ct-add-field-panel" class="shrink-0 overflow-hidden bg-white"
+          style="max-height:0;transition:max-height .3s ease;border-top:2px solid #021a42">
+          <div class="p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(2,26,66,.08)">
+                  <i data-lucide="list-plus" style="width:13px;height:13px;color:#021a42"></i>
+                </div>
+                <p class="text-sm font-bold text-slate-900">Nouveau champ</p>
+              </div>
+              <button onclick="toggleAddFieldPanel()" class="p-1 rounded-lg transition-colors" style="color:#94a3b8"
+                onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+                <i data-lucide="x" style="width:14px;height:14px"></i>
+              </button>
+            </div>
+            <form id="ct-field-form" class="space-y-4">
+              <!-- Name + Required + Submit -->
+              <div class="flex items-end gap-4">
+                <div class="flex-1">
+                  <label class="form-label">Nom du champ *</label>
+                  <input name="name" id="ct-field-name-input" required class="form-input"
+                    placeholder="ex: titre, description, slug…"
+                    oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')"/>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer select-none pb-2 shrink-0">
+                  <div class="relative">
+                    <input type="checkbox" name="required" id="ct-field-required" class="sr-only peer"/>
+                    <div class="w-9 h-5 rounded-full transition-colors peer-checked:bg-[#021a42]" style="background:#e2e8f0"></div>
+                    <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+                  </div>
+                  <span class="text-xs font-medium text-slate-600 whitespace-nowrap">Obligatoire</span>
+                </label>
+                <button type="submit" id="ct-field-submit" class="btn-primary shrink-0 mb-0.5">
+                  <i data-lucide="plus" style="width:13px;height:13px"></i> Ajouter
+                </button>
+              </div>
+              <!-- Type picker (4 cols, compact) -->
+              <div>
+                <label class="form-label mb-2">Type</label>
+                <input type="hidden" name="type" id="ct-field-type-input" value="text"/>
+                <div class="grid grid-cols-4 gap-1.5" id="ct-type-grid">
+                  ${FIELD_TYPES.map(t=>`
+                    <button type="button" onclick="selectCTFieldType('${t.value}')" id="cft-${t.value}"
+                      class="ct-field-type-btn flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all"
+                      style="background:#f8fafc;border:1.5px solid #f1f5f9">
+                      <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style="background:${t.color}18">
+                        <i data-lucide="${t.icon}" style="width:11px;height:11px;color:${t.color}"></i>
+                      </div>
+                      <p class="text-[11px] font-bold text-slate-700 leading-tight truncate">${t.label}</p>
+                    </button>`).join('')}
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+
+  renderIcons();
+  _fieldContainerId = 'ct-fields-list';
+  _addFieldOpen = false;
+  selectCTFieldType('text');
+  await loadFields(_currentCT.id, 'ct-fields-list');
+
+  // Wire up inline add-field form
+  document.getElementById('ct-field-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd   = new FormData(e.target);
+    const name = fd.get('name')?.trim();
+    const type = fd.get('type');
+    if (!name) { toast('Le nom du champ est requis', 'error'); return; }
+    const sbtn = document.getElementById('ct-field-submit');
+    sbtn.disabled = true; sbtn.style.opacity = '.6';
+    const r2 = await api(`/api/content-types/${_currentCT.id}/fields`, {
+      method: 'POST',
+      body: JSON.stringify({ name, type, required: fd.has('required') })
+    });
+    sbtn.disabled = false; sbtn.style.opacity = '1';
+    if (r2?.ok) {
+      document.getElementById('ct-field-name-input').value = '';
+      document.getElementById('ct-field-required').checked = false;
+      selectCTFieldType('text');
+      await loadFields(_currentCT.id, 'ct-fields-list');
+      toast(`Champ "${name}" ajouté`);
+    } else {
+      toast((await apiJSON(r2))?.error ?? 'Erreur', 'error');
+    }
+  };
+}
+
+// ─── CT Sidebar item ─────────────────────────────────────────────────────────
+function ctSideItem(ct, active) {
+  const fc = ct.fields?.length ?? ct.field_count ?? 0;
+  return `
+    <button onclick="selectCT(${ct.id})"
+      data-ctid="${ct.id}"
+      class="ct-side-btn w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors"
+      style="${active ? 'background:rgba(2,26,66,.08)' : ''}">
+      <div class="ct-side-avatar w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors"
+        style="background:${active ? '#021a42' : '#e2e8f0'};color:${active ? '#fff' : '#64748b'}">
+        ${esc((ct.name[0] ?? '?').toUpperCase())}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="ct-side-label text-xs font-semibold truncate transition-colors"
+          style="color:${active ? '#021a42' : '#475569'}">${esc(ct.name)}</p>
+        <p class="text-[10px] mt-px" style="color:#94a3b8">${fc} champ${fc !== 1 ? 's' : ''}</p>
+      </div>
+      <span class="ct-side-dot w-1.5 h-1.5 rounded-full shrink-0 transition-opacity"
+        style="background:#f6245b;opacity:${active ? '1' : '0'}"></span>
+    </button>`;
+}
+
+// ─── Select a CT in the sidebar ───────────────────────────────────────────────
+async function selectCT(id) {
+  _currentCT = _ctAll.find(c => c.id === id) ?? _currentCT;
+
+  // Update sidebar active states
+  document.querySelectorAll('.ct-side-btn').forEach(btn => {
+    const isActive = parseInt(btn.dataset.ctid) === id;
+    btn.style.background = isActive ? 'rgba(2,26,66,.08)' : '';
+    const avatar = btn.querySelector('.ct-side-avatar');
+    if (avatar) { avatar.style.background = isActive ? '#021a42' : '#e2e8f0'; avatar.style.color = isActive ? '#fff' : '#64748b'; }
+    const label = btn.querySelector('.ct-side-label');
+    if (label) label.style.color = isActive ? '#021a42' : '#475569';
+    const dot = btn.querySelector('.ct-side-dot');
+    if (dot) dot.style.opacity = isActive ? '1' : '0';
+  });
+
+  // Update right-panel header
+  const el = _currentCT;
+  const av = document.getElementById('ct-panel-avatar');
+  if (av) av.textContent = (el.name[0] ?? '?').toUpperCase();
+  const nm = document.getElementById('ct-panel-name');
+  if (nm) nm.textContent = el.name;
+  const sl = document.getElementById('ct-panel-slug');
+  if (sl) sl.textContent = el.slug;
+  const ep = document.getElementById('ct-panel-endpoint');
+  if (ep) ep.textContent = `/v1/${el.slug}`;
+
+  // Update action buttons (re-bind onclick to new CT id)
+  const entriesBtn = document.querySelector('[onclick^="openEntries("]');
+  if (entriesBtn) entriesBtn.setAttribute('onclick', `openEntries(${el.id},'${esc(el.name)}')`);
+  const deleteBtn = document.querySelector('[onclick^="deleteCT("]');
+  if (deleteBtn) deleteBtn.setAttribute('onclick', `deleteCT(${el.id})`);
+
+  // Close add-field panel if open
+  if (_addFieldOpen) toggleAddFieldPanel();
+
+  // Reset field search/filter
+  const fs = document.getElementById('ct-field-search');
+  if (fs) fs.value = '';
+  const ff = document.getElementById('ct-field-filter');
+  if (ff) ff.value = 'all';
+
+  await loadFields(el.id, 'ct-fields-list');
+}
+
+// ─── Filter CT sidebar list ───────────────────────────────────────────────────
+function filterCTSidebar(q) {
+  const lq = q.toLowerCase().trim();
+  document.querySelectorAll('.ct-side-btn').forEach(btn => {
+    const id = parseInt(btn.dataset.ctid);
+    const ct = _ctAll.find(c => c.id === id);
+    const show = !lq || (ct && (ct.name.toLowerCase().includes(lq) || ct.slug.toLowerCase().includes(lq)));
+    btn.style.display = show ? '' : 'none';
+  });
+}
+
+// ─── Filter fields in the inline panel ───────────────────────────────────────
+function filterCTFields() {
+  const q  = (document.getElementById('ct-field-search')?.value ?? '').toLowerCase().trim();
+  const ft = document.getElementById('ct-field-filter')?.value ?? 'all';
+  document.querySelectorAll('#ct-fields-list [data-field-idx]').forEach(el => {
+    const name = (el.dataset.fieldName ?? '').toLowerCase();
+    const type = el.dataset.fieldType ?? '';
+    const showQ = !q || name.includes(q);
+    const showT = ft === 'all' || type === ft;
+    el.style.display = showQ && showT ? '' : 'none';
+  });
+}
+
+// ─── Toggle add-field panel ───────────────────────────────────────────────────
+let _addFieldOpen = false;
+function toggleAddFieldPanel() {
+  _addFieldOpen = !_addFieldOpen;
+  const panel = document.getElementById('ct-add-field-panel');
+  if (!panel) return;
+  panel.style.maxHeight = _addFieldOpen ? '420px' : '0';
+  const btn = document.getElementById('add-field-toggle-btn');
+  if (btn) {
+    btn.style.background = _addFieldOpen ? '#032d6b' : '#021a42';
+  }
+  if (_addFieldOpen) {
+    setTimeout(() => document.getElementById('ct-field-name-input')?.focus(), 320);
+  }
+}
+
+// ─── Highlight a field type in the inline picker ─────────────────────────────
+function selectCTFieldType(value) {
+  document.getElementById('ct-field-type-input').value = value;
+  document.querySelectorAll('.ct-field-type-btn').forEach(btn => {
+    const isActive = btn.id === `cft-${value}`;
+    btn.style.background  = isActive ? 'rgba(2,26,66,.07)' : '#f8fafc';
+    btn.style.borderColor = isActive ? '#021a42'           : '#f1f5f9';
+  });
+}
+
+// ─── Render detailed field cards in inline panel ──────────────────────────────
+function renderFieldCards(container, fields, ctID) {
+  if (!container) return;
+  if (!fields.length) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center gap-3 py-14 text-center">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center" style="background:#f1f5f9">
+          <i data-lucide="layers" style="width:22px;height:22px;color:#cbd5e1"></i>
+        </div>
+        <p class="text-sm font-bold text-slate-400">Aucun champ défini</p>
+        <p class="text-xs text-slate-300 leading-snug">Cliquez sur <strong>Ajouter un champ</strong><br/>pour modéliser cette collection.</p>
+      </div>`;
+    renderIcons();
+    // Update counter
+    const cnt = document.getElementById('ct-fields-count');
+    if (cnt) cnt.textContent = '0 champ';
     return;
   }
 
-  setContent(`
-    <!-- Toolbar -->
-    <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
-      <div>
-        <h2 class="text-lg font-bold text-slate-900">Types de contenu</h2>
-        <p id="ct-result-label" class="text-xs text-slate-500 mt-0.5"></p>
-      </div>
-      <div class="flex items-center gap-2 flex-wrap">
+  container.innerHTML = fields.map((f, i) => {
+    const ft = FIELD_MAP[f.type] ?? { icon:'type', color:'#94a3b8', label:f.type };
+    return `
+    <div
+      draggable="true"
+      data-field-idx="${i}"
+      data-field-name="${esc(f.name)}"
+      data-field-type="${esc(f.type)}"
+      ondragstart="dfStart(event,${i})"
+      ondragover="dfOver(event)"
+      ondragleave="dfLeave(event)"
+      ondrop="dfDrop(event,${ctID},${i})"
+      ondragend="dfEnd()"
+      class="group flex items-center gap-4 rounded-2xl px-5 py-4 transition-all cursor-grab select-none bg-white"
+      style="border:1.5px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.04)">
 
-        <!-- Search -->
-        <div class="relative">
-          <i data-lucide="search" style="width:13px;height:13px;color:#94a3b8;position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none"></i>
-          <input id="ct-search" oninput="_ctPage=1;renderCTTable()"
-            class="form-input text-sm pl-8 pr-3 py-2" style="width:210px"
-            placeholder="Rechercher un type…"/>
+      <!-- Drag handle -->
+      <i data-lucide="grip-vertical" style="width:14px;height:14px;color:#cbd5e1;flex-shrink:0"></i>
+
+      <!-- Icon badge -->
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+        style="background:${ft.color}14;border:1.5px solid ${ft.color}22">
+        <i data-lucide="${ft.icon}" style="width:16px;height:16px;color:${ft.color}"></i>
+      </div>
+
+      <!-- Info -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="text-sm font-bold text-slate-800 truncate">${esc(f.name)}</p>
+          ${f.required ? `<span class="text-[10px] font-bold px-1.5 py-px rounded-full" style="background:#fde8ee;color:#f6245b">Requis</span>` : ''}
         </div>
-
-        <!-- Filter -->
-        <select id="ct-filter" onchange="_ctPage=1;renderCTTable()" class="form-input text-sm py-2" style="width:160px">
-          <option value="all">Tous les types</option>
-          <option value="with">Avec champs</option>
-          <option value="without">Sans champs</option>
-        </select>
-
+        <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-lg" style="background:${ft.color}12;color:${ft.color}">${ft.label}</span>
+          <span class="text-[10px] font-mono text-slate-400">${esc(f.name)}</span>
+        </div>
+        ${ft.desc ? `<p class="text-[11px] mt-1 leading-snug" style="color:#94a3b8">${ft.desc}</p>` : ''}
       </div>
-    </div>
 
-    <!-- Table card -->
-    <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-      <table class="w-full">
-        <thead>
-          <tr style="border-bottom:1px solid #f1f5f9">
-            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nom</th>
-            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Slug</th>
-            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Champs</th>
-            <th class="text-left px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Endpoint</th>
-            <th class="px-5 py-3"></th>
-          </tr>
-        </thead>
-        <tbody id="ct-tbody"></tbody>
-      </table>
-      <!-- Pagination bar -->
-      <div id="ct-pagination" class="px-5 py-3 flex items-center justify-between" style="border-top:1px solid #f1f5f9;display:none!important"></div>
-    </div>
-  `);
+      <!-- Position badge -->
+      <span class="text-xs font-bold rounded-lg px-2 py-1 shrink-0" style="background:#f1f5f9;color:#94a3b8">#${i+1}</span>
 
-  renderCTTable();
+      <!-- Delete -->
+      <button onclick="deleteField(${ctID},${f.id})"
+        class="shrink-0 opacity-0 group-hover:opacity-100 p-2 rounded-xl transition-all"
+        style="color:#cbd5e1"
+        onmouseover="this.style.color='#dc2626';this.style.background='#fef2f2'"
+        onmouseout="this.style.color='#cbd5e1';this.style.background=''">
+        <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+      </button>
+    </div>`;
+  }).join('');
+  renderIcons();
+
+  // Update counter
+  const cnt = document.getElementById('ct-fields-count');
+  if (cnt) cnt.textContent = `${fields.length} champ${fields.length > 1 ? 's' : ''}`;
 }
 
 function renderCTTable() {
@@ -806,10 +1150,8 @@ async function deleteCT(id) {
       if (r?.ok) {
         toast('Type supprimé');
         _ctAll = _ctAll.filter(c => c.id !== id);
-        const totalPages = Math.max(1, Math.ceil(_ctAll.length / CT_PER_PAGE));
-        if (_ctPage > totalPages) _ctPage = totalPages;
-        if (!_ctAll.length) { renderContentTypes(); return; }
-        renderCTTable();
+        if (_currentCT?.id === id) _currentCT = null;
+        renderContentTypes(); // full re-render to refresh 2-panel sidebar
       } else {
         const d = await apiJSON(r);
         toast(d?.error ?? 'Erreur', 'error');
@@ -926,9 +1268,12 @@ async function openBuilderModal(ctID, ctName) {
       </div>
     </div>`);
 
+  // Modal always targets 'fields-list'
+  _fieldContainerId = 'fields-list';
+
   // Set default selected type
   selectFieldType('text');
-  await loadFields(ctID);
+  await loadFields(ctID, 'fields-list');
 
   document.getElementById('field-form').onsubmit = async (e) => {
     e.preventDefault();
@@ -945,7 +1290,7 @@ async function openBuilderModal(ctID, ctName) {
       document.getElementById('field-name-input').value = '';
       selectFieldType('text');
       document.getElementById('field-required').checked = false;
-      await loadFields(ctID);
+      await loadFields(ctID, 'fields-list');
       toast(`Champ "${name}" ajouté`);
     } else toast((await apiJSON(r))?.error??'Erreur','error');
   };
@@ -964,7 +1309,7 @@ function selectFieldType(value) {
 let _builderFields = []; // current field list in the open builder modal
 let _dragSrcIdx    = -1; // index of the item being dragged
 
-async function loadFields(ctID) {
+async function loadFields(ctID, listId = 'fields-list') {
   const r  = await api(`/api/content-types/${ctID}`);
   const ct = await r?.json();
 
@@ -977,9 +1322,20 @@ async function loadFields(ctID) {
   }
 
   _builderFields = ct?.fields ?? [];
-  const c = document.getElementById('fields-list');
+  const c = document.getElementById(listId);
   if (!c) return;
 
+  // ── Inline panel (ct-fields-list) — use detailed cards ───────────────────
+  if (listId === 'ct-fields-list') {
+    renderFieldCards(c, _builderFields, ctID);
+    // Update sidebar field count for this CT
+    const sideBtn = document.querySelector(`.ct-side-btn[data-ctid="${ctID}"] p:last-child`);
+    const fc = _builderFields.length;
+    if (sideBtn) sideBtn.textContent = `${fc} champ${fc !== 1 ? 's' : ''}`;
+    return;
+  }
+
+  // ── Modal (fields-list) — use compact cards ───────────────────────────────
   if (!_builderFields.length) {
     c.innerHTML = `
       <div class="flex flex-col items-center justify-center gap-2 py-10 text-center">
@@ -1075,16 +1431,7 @@ async function dfDrop(e, ctID, targetIdx) {
   const updated = [..._builderFields];
   const [moved]  = updated.splice(_dragSrcIdx, 1);
   updated.splice(targetIdx, 0, moved);
-
-  // Optimistic render
   _builderFields = updated;
-  const c = document.getElementById('fields-list');
-  if (c) {
-    // Quick visual reorder without full re-render
-    const items = [...c.querySelectorAll('[data-field-idx]')];
-    const draggedEl = items[_dragSrcIdx < 0 ? 0 : _dragSrcIdx] ?? items[0];
-    // Just call loadFields after API — fast enough
-  }
 
   const r = await api(`/api/content-types/${ctID}/fields/reorder`, {
     method: 'PUT',
@@ -1092,17 +1439,30 @@ async function dfDrop(e, ctID, targetIdx) {
   });
 
   if (r?.ok) {
-    await loadFields(ctID);
+    await loadFields(ctID, _fieldContainerId);
   } else {
     toast('Erreur lors de la réorganisation', 'error');
-    await loadFields(ctID); // reset to server state
+    await loadFields(ctID, _fieldContainerId); // reset to server state
   }
 }
 
 async function deleteField(ctID, fid) {
-  await api(`/api/content-types/${ctID}/fields/${fid}`, { method:'DELETE' });
-  await loadFields(ctID);
-  toast('Champ supprimé');
+  const field = _builderFields.find(f => f.id === fid);
+  confirmModal({
+    title:  `Supprimer le champ "${esc(field?.name ?? 'ce champ')}" ?`,
+    desc:   'Les données de ce champ seront perdues dans toutes les entrées existantes.',
+    label:  'Supprimer le champ',
+    icon:   'type',
+    onConfirm: async () => {
+      const r = await api(`/api/content-types/${ctID}/fields/${fid}`, { method:'DELETE' });
+      if (r?.ok) {
+        await loadFields(ctID, _fieldContainerId);
+        toast('Champ supprimé');
+      } else {
+        toast((await apiJSON(r))?.error ?? 'Erreur', 'error');
+      }
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
