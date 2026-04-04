@@ -142,17 +142,57 @@
   </nav>
 
   <!-- User footer -->
-  <div class="px-3 py-3 shrink-0" style="border-top:1px solid rgba(255,255,255,.07)">
-    <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-xl" style="background:rgba(255,255,255,.05)">
-      <div id="user-avatar" class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:linear-gradient(135deg,#f6245b,#d41a4e)">?</div>
-      <div class="flex-1 min-w-0">
-        <p id="user-name" class="text-[12px] font-semibold text-white truncate leading-none">…</p>
+  <div class="px-3 py-3 shrink-0 relative" style="border-top:1px solid rgba(255,255,255,.07)">
+
+    <!-- User popup (shown above footer on click) -->
+    <div id="user-popup" class="hidden absolute bottom-full left-3 right-3 mb-2 rounded-2xl overflow-hidden shadow-2xl z-50"
+      style="background:#fff;border:1px solid #e2e8f0">
+      <!-- Header -->
+      <div class="px-4 py-3.5 flex items-center gap-3" style="background:linear-gradient(135deg,#021a42,#032d6b)">
+        <div id="popup-avatar" class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+          style="background:linear-gradient(135deg,#f6245b,#d41a4e)">?</div>
+        <div class="min-w-0">
+          <p id="popup-name"  class="text-[13px] font-bold text-white truncate leading-none">…</p>
+          <p id="popup-email" class="text-[11px] truncate mt-0.5" style="color:rgba(255,255,255,.45)">…</p>
+        </div>
+      </div>
+      <!-- Actions -->
+      <div class="p-1.5 space-y-0.5">
+        <button onclick="closeUserPopup();nav('profile')"
+          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-left transition-colors"
+          style="color:#334155"
+          onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:#f1f5f9">
+            <i data-lucide="user-cog" style="width:13px;height:13px;color:#475569"></i>
+          </div>
+          Gestion du profil
+        </button>
+        <div style="height:1px;background:#f1f5f9;margin:2px 0"></div>
+        <button onclick="closeUserPopup();logout()"
+          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-left transition-colors"
+          style="color:#dc2626"
+          onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background=''">
+          <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background:#fef2f2">
+            <i data-lucide="log-out" style="width:13px;height:13px;color:#dc2626"></i>
+          </div>
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+
+    <!-- Clickable user card -->
+    <button id="user-footer-btn" onclick="toggleUserPopup()"
+      class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors"
+      style="background:rgba(255,255,255,.05)"
+      onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">
+      <div id="user-avatar" class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+        style="background:linear-gradient(135deg,#f6245b,#d41a4e)">?</div>
+      <div class="flex-1 min-w-0 text-left">
+        <p id="user-name"  class="text-[12px] font-semibold text-white truncate leading-none">…</p>
         <p id="user-email" class="text-[11px] truncate mt-0.5" style="color:rgba(255,255,255,.35)">…</p>
       </div>
-      <button onclick="logout()" title="Déconnexion" class="shrink-0 transition-colors" style="color:rgba(255,255,255,.3)" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(255,255,255,.3)'">
-        <i data-lucide="log-out" style="width:14px;height:14px"></i>
-      </button>
-    </div>
+      <i data-lucide="chevrons-up-down" style="width:12px;height:12px;color:rgba(255,255,255,.3);shrink-0:0"></i>
+    </button>
   </div>
 </aside>
 
@@ -245,12 +285,14 @@ function toast(msg, type='success') {
 const PAGES = {
   dashboard:renderDashboard, 'content-types':renderContentTypes,
   entries:renderEntries, media:renderMedia,
-  'api-keys':renderAPIKeys, 'api-docs':renderAPIDocs, settings:renderSettings
+  'api-keys':renderAPIKeys, 'api-docs':renderAPIDocs,
+  settings:renderSettings, profile:renderProfile
 };
 const TITLES = {
   dashboard:'Dashboard', 'content-types':'Types de contenu',
   entries:'Entrées', media:'Médias',
-  'api-keys':'Clés API', 'api-docs':'Référence API', settings:'Paramètres'
+  'api-keys':'Clés API', 'api-docs':'Référence API',
+  settings:'Paramètres', profile:'Mon profil'
 };
 
 function nav(page, extra={}) {
@@ -2987,6 +3029,173 @@ function apiSection(title, badge, rows) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  PROFILE
+// ═══════════════════════════════════════════════════════════════════════════════
+async function renderProfile() {
+  setContent(skeletonRows(4));
+  const r = await api('/api/me'); if(!r) return;
+  const u = await r.json() ?? {};
+
+  const initial = (u.name || u.email)?.[0]?.toUpperCase() || '?';
+
+  setContent(`
+    <div class="max-w-xl space-y-5">
+
+      <!-- Page header -->
+      <div class="flex items-center gap-4 mb-1">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold shrink-0"
+          style="background:linear-gradient(135deg,#f6245b,#d41a4e)">${esc(initial)}</div>
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">${esc(u.name || u.email)}</h2>
+          <p class="text-sm text-slate-400 mt-0.5 flex items-center gap-1.5">
+            ${u.is_admin ? badge('Administrateur','pink') : badge('Éditeur','slate')}
+            <span class="text-slate-300">·</span>
+            <span>${esc(u.email)}</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Informations du compte -->
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-4 flex items-center gap-2.5" style="border-bottom:1px solid #f1f5f9">
+          <i data-lucide="user" style="width:15px;height:15px;color:#94a3b8"></i>
+          <h3 class="text-sm font-bold text-slate-800">Informations du compte</h3>
+        </div>
+        <form id="profile-info-form" class="px-5 py-4 space-y-4" onsubmit="saveProfileInfo(event)">
+          <div>
+            <label class="form-label">Nom complet</label>
+            <input id="profile-name" type="text" name="name" value="${esc(u.name||'')}"
+              class="form-input" placeholder="Votre nom" required/>
+          </div>
+          <div>
+            <label class="form-label">Adresse email</label>
+            <input id="profile-email" type="email" name="email" value="${esc(u.email||'')}"
+              class="form-input" placeholder="vous@exemple.com" required/>
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" class="btn-primary">
+              <i data-lucide="save" style="width:13px;height:13px"></i>
+              Enregistrer les modifications
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Changer le mot de passe -->
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-4 flex items-center gap-2.5" style="border-bottom:1px solid #f1f5f9">
+          <i data-lucide="lock" style="width:15px;height:15px;color:#94a3b8"></i>
+          <h3 class="text-sm font-bold text-slate-800">Changer le mot de passe</h3>
+        </div>
+        <form id="profile-pw-form" class="px-5 py-4 space-y-4" onsubmit="saveProfilePassword(event)">
+          <div>
+            <label class="form-label">Mot de passe actuel</label>
+            <input type="password" name="current_password" class="form-input"
+              placeholder="••••••••" required autocomplete="current-password"/>
+          </div>
+          <div>
+            <label class="form-label">Nouveau mot de passe</label>
+            <input id="pw-new" type="password" name="new_password" class="form-input"
+              placeholder="••••••••" required autocomplete="new-password" minlength="8"/>
+          </div>
+          <div>
+            <label class="form-label">Confirmer le nouveau mot de passe</label>
+            <input type="password" name="confirm_password" class="form-input"
+              placeholder="••••••••" required autocomplete="new-password"/>
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" class="btn-primary">
+              <i data-lucide="key" style="width:13px;height:13px"></i>
+              Mettre à jour le mot de passe
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Sécurité -->
+      <div class="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-4 flex items-center gap-2.5" style="border-bottom:1px solid #f1f5f9">
+          <i data-lucide="shield-check" style="width:15px;height:15px;color:#94a3b8"></i>
+          <h3 class="text-sm font-bold text-slate-800">Sécurité</h3>
+        </div>
+        <div class="px-5 py-4 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-semibold text-slate-700">Authentification à deux facteurs</p>
+            <p class="text-xs text-slate-400 mt-0.5">Sécurisez l'accès avec TOTP (Google Authenticator, Aegis…)</p>
+          </div>
+          <button onclick="setup2FA()" class="btn-secondary text-xs">
+            <i data-lucide="smartphone" style="width:12px;height:12px"></i>
+            Configurer
+          </button>
+        </div>
+      </div>
+
+      <!-- Déconnexion -->
+      <button onclick="logout()"
+        class="w-full flex items-center justify-center gap-2.5 text-sm font-semibold py-3 rounded-xl transition-colors"
+        style="color:#dc2626;background:#fef2f2;border:1px solid rgba(220,38,38,.15)"
+        onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">
+        <i data-lucide="log-out" style="width:15px;height:15px"></i>
+        Se déconnecter
+      </button>
+
+    </div>`);
+  renderIcons();
+}
+
+async function saveProfileInfo(e) {
+  e.preventDefault();
+  const fd   = new FormData(e.target);
+  const body = { name: fd.get('name'), email: fd.get('email') };
+
+  const btn = e.target.querySelector('[type=submit]');
+  btn.disabled = true; btn.style.opacity = '.6';
+
+  const r = await api('/api/me', { method:'PATCH', body: JSON.stringify(body) });
+  btn.disabled = false; btn.style.opacity = '1';
+
+  if (r?.ok) {
+    const u = await r.json() ?? {};
+    const displayName = u.name || u.email;
+    const initial     = displayName?.[0]?.toUpperCase() || '?';
+    // Update sidebar + popup
+    document.getElementById('user-name').textContent   = displayName;
+    document.getElementById('user-email').textContent  = u.email;
+    document.getElementById('user-avatar').textContent = initial;
+    document.getElementById('popup-name').textContent  = displayName;
+    document.getElementById('popup-email').textContent = u.email;
+    document.getElementById('popup-avatar').textContent= initial;
+    toast('Profil mis à jour !');
+  } else {
+    toast((await apiJSON(r))?.error ?? 'Erreur lors de la sauvegarde', 'error');
+  }
+}
+
+async function saveProfilePassword(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  if (fd.get('new_password') !== fd.get('confirm_password')) {
+    toast('Les mots de passe ne correspondent pas', 'error'); return;
+  }
+  const body = {
+    current_password: fd.get('current_password'),
+    new_password:     fd.get('new_password'),
+  };
+  const btn = e.target.querySelector('[type=submit]');
+  btn.disabled = true; btn.style.opacity = '.6';
+
+  const r = await api('/api/me/password', { method:'PATCH', body: JSON.stringify(body) });
+  btn.disabled = false; btn.style.opacity = '1';
+
+  if (r?.ok) {
+    e.target.reset();
+    toast('Mot de passe mis à jour !');
+  } else {
+    toast((await apiJSON(r))?.error ?? 'Erreur lors du changement de mot de passe', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  SETTINGS
 // ═══════════════════════════════════════════════════════════════════════════════
 async function renderSettings() {
@@ -3147,14 +3356,50 @@ function copyTxt(t){ navigator.clipboard.writeText(t).then(()=>toast('Copié !')
 // ═══════════════════════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════════════════════
+// ── User popup ────────────────────────────────────────────────────────────────
+let _popupOpen = false;
+
+function toggleUserPopup() {
+  const popup = document.getElementById('user-popup');
+  if (!popup) return;
+  _popupOpen = !_popupOpen;
+  popup.classList.toggle('hidden', !_popupOpen);
+  if (_popupOpen) renderIcons();
+}
+
+function closeUserPopup() {
+  _popupOpen = false;
+  document.getElementById('user-popup')?.classList.add('hidden');
+}
+
+// Close popup when clicking outside
+document.addEventListener('click', (e) => {
+  if (!_popupOpen) return;
+  const footer = document.getElementById('user-footer-btn');
+  const popup  = document.getElementById('user-popup');
+  if (footer && !footer.contains(e.target) && popup && !popup.contains(e.target)) {
+    closeUserPopup();
+  }
+});
+
 async function init() {
   if(!tkn()) { location.href='/login'; return; }
   const r = await api('/api/me');
   if(!r) return;
   const u = await r.json();
-  document.getElementById('user-name').textContent  = u.name||u.email;
-  document.getElementById('user-email').textContent = u.email;
-  document.getElementById('user-avatar').textContent = (u.name||u.email)?.[0]?.toUpperCase()||'?';
+  const displayName = u.name || u.email;
+  const initial     = displayName?.[0]?.toUpperCase() || '?';
+
+  // Sidebar footer
+  document.getElementById('user-name').textContent   = displayName;
+  document.getElementById('user-email').textContent  = u.email;
+  document.getElementById('user-avatar').textContent = initial;
+
+  // Popup header
+  document.getElementById('popup-name').textContent  = displayName;
+  document.getElementById('popup-email').textContent = u.email;
+  document.getElementById('popup-avatar').textContent= initial;
+
   const hash = location.hash.replace('#','')||'dashboard';
   nav(hash);
 }
