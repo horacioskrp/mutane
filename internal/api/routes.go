@@ -8,7 +8,7 @@ func NewRouter(h *Handler) http.Handler {
 	// ── Static assets ────────────────────────────────────────────────────────
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
-	// ── Setup / Onboarding (public — accessible uniquement si non initialisé) ─
+	// ── Setup / Onboarding ───────────────────────────────────────────────────
 	mux.HandleFunc("GET /setup", h.Setup.SetupPage)
 	mux.HandleFunc("GET /api/setup/status", h.Setup.Status)
 	mux.HandleFunc("POST /api/setup", h.Setup.Init)
@@ -28,39 +28,43 @@ func NewRouter(h *Handler) http.Handler {
 	mux.HandleFunc("POST /api/auth/login", h.Auth.Login)
 	mux.HandleFunc("POST /api/auth/logout", h.Auth.Logout)
 
-	// ── Auth API (protected by Bearer token) ─────────────────────────────────
+	// ── Auth API (Bearer token) ───────────────────────────────────────────────
 	mux.Handle("POST /api/auth/2fa/enable", BearerAuth(http.HandlerFunc(h.Auth.Enable2FA)))
 	mux.Handle("POST /api/auth/2fa/verify", BearerAuth(http.HandlerFunc(h.Auth.Verify2FA)))
 
-	// ── Admin JSON API (Bearer token) ─────────────────────────────────────────
+	// ── Admin JSON API ────────────────────────────────────────────────────────
 	mux.Handle("GET /api/me", BearerAuth(http.HandlerFunc(h.Admin.Me)))
 	mux.Handle("GET /api/stats", BearerAuth(http.HandlerFunc(h.Admin.Stats)))
 
-	// Content types
+	// ── Content types ─────────────────────────────────────────────────────────
 	mux.Handle("GET /api/content-types", BearerAuth(http.HandlerFunc(h.Content.ListContentTypes)))
 	mux.Handle("POST /api/content-types", BearerAuth(http.HandlerFunc(h.Content.CreateContentType)))
 	mux.Handle("GET /api/content-types/{id}", BearerAuth(http.HandlerFunc(h.Content.GetContentType)))
 	mux.Handle("PUT /api/content-types/{id}", BearerAuth(http.HandlerFunc(h.Content.UpdateContentType)))
 	mux.Handle("DELETE /api/content-types/{id}", BearerAuth(http.HandlerFunc(h.Content.DeleteContentType)))
 
-	// Fields
+	// Endpoint configuration
+	mux.Handle("GET /api/content-types/{id}/endpoint-config", BearerAuth(http.HandlerFunc(h.Content.GetEndpointConfig)))
+	mux.Handle("PUT /api/content-types/{id}/endpoint-config", BearerAuth(http.HandlerFunc(h.Content.UpdateEndpointConfig)))
+
+	// ── Fields ────────────────────────────────────────────────────────────────
 	mux.Handle("POST /api/content-types/{id}/fields", BearerAuth(http.HandlerFunc(h.Content.AddField)))
 	mux.Handle("DELETE /api/content-types/{id}/fields/{fid}", BearerAuth(http.HandlerFunc(h.Content.DeleteField)))
 	mux.Handle("PUT /api/content-types/{id}/fields/reorder", BearerAuth(http.HandlerFunc(h.Content.ReorderFields)))
 
-	// Entries
+	// ── Entries ───────────────────────────────────────────────────────────────
 	mux.Handle("GET /api/content-types/{typeId}/entries", BearerAuth(http.HandlerFunc(h.Content.ListEntries)))
 	mux.Handle("POST /api/content-types/{typeId}/entries", BearerAuth(http.HandlerFunc(h.Content.CreateEntry)))
 	mux.Handle("GET /api/content-types/{typeId}/entries/{id}", BearerAuth(http.HandlerFunc(h.Content.GetEntry)))
 	mux.Handle("PUT /api/content-types/{typeId}/entries/{id}", BearerAuth(http.HandlerFunc(h.Content.UpdateEntry)))
 	mux.Handle("DELETE /api/content-types/{typeId}/entries/{id}", BearerAuth(http.HandlerFunc(h.Content.DeleteEntry)))
 
-	// Media
+	// ── Media ─────────────────────────────────────────────────────────────────
 	mux.Handle("GET /api/media", BearerAuth(http.HandlerFunc(h.Media.List)))
 	mux.Handle("POST /api/media/upload", BearerAuth(http.HandlerFunc(h.Media.Upload)))
 	mux.Handle("DELETE /api/media/{id}", BearerAuth(http.HandlerFunc(h.Media.Delete)))
 
-	// API Keys
+	// ── API Keys ──────────────────────────────────────────────────────────────
 	mux.Handle("GET /api/keys", BearerAuth(http.HandlerFunc(h.APIKey.List)))
 	mux.Handle("POST /api/keys", BearerAuth(http.HandlerFunc(h.APIKey.Create)))
 	mux.Handle("POST /api/keys/{id}/rotate", BearerAuth(http.HandlerFunc(h.APIKey.Rotate)))
@@ -93,11 +97,17 @@ func NewRouter(h *Handler) http.Handler {
 
 	mux.Handle("/admin/", SessionAuth(adminMux))
 
-	// ── Public API v1 (X-API-Key) ─────────────────────────────────────────────
-	apiKeyMW := APIKeyAuth(h.KeyRepo)
-	mux.Handle("GET /v1/media", apiKeyMW(http.HandlerFunc(h.Public.ListMedia)))
-	mux.Handle("GET /v1/{slug}", apiKeyMW(http.HandlerFunc(h.Public.ListEntries)))
-	mux.Handle("GET /v1/{slug}/{id}", apiKeyMW(http.HandlerFunc(h.Public.GetEntry)))
+	// ── Public API v1 ─────────────────────────────────────────────────────────
+	// Auth is enforced per-request inside each handler based on endpoint_config.
+	// Public endpoints (config.public=true) pass without a key.
+	// Private endpoints require a valid X-API-Key header or ?api_key= param.
+	mux.Handle("GET /v1/media", http.HandlerFunc(h.Public.ListMedia))
+	mux.Handle("GET /v1/{slug}", http.HandlerFunc(h.Public.ListEntries))
+	mux.Handle("GET /v1/{slug}/{id}", http.HandlerFunc(h.Public.GetEntry))
+	mux.Handle("POST /v1/{slug}", http.HandlerFunc(h.Public.CreateEntry))
+	mux.Handle("PUT /v1/{slug}/{id}", http.HandlerFunc(h.Public.UpdateEntry))
+	mux.Handle("PATCH /v1/{slug}/{id}", http.HandlerFunc(h.Public.UpdateEntry))
+	mux.Handle("DELETE /v1/{slug}/{id}", http.HandlerFunc(h.Public.DeleteEntry))
 
 	return Logger(CORS(mux))
 }

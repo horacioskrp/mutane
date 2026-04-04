@@ -15,7 +15,7 @@ func NewHandler(db *sql.DB) *Handler {
 	return &Handler{repo: NewRepository(db)}
 }
 
-// ContentType handlers
+// ── ContentType handlers ──────────────────────────────────────────────────────
 
 func (h *Handler) ListContentTypes(w http.ResponseWriter, r *http.Request) {
 	types, err := h.repo.ListContentTypes(r.Context())
@@ -83,13 +83,57 @@ func (h *Handler) DeleteContentType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteContentType(r.Context(), id); err != nil {
+		if err.Error() == "cannot delete system content type" {
+			writeError(w, http.StatusForbidden, "impossible de supprimer un type système")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Entry handlers
+// ── Endpoint configuration handlers ──────────────────────────────────────────
+
+// GetEndpointConfig returns the EndpointConfig for a content type.
+func (h *Handler) GetEndpointConfig(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	ct, err := h.repo.GetContentType(r.Context(), id)
+	if err == sql.ErrNoRows {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, ct.EndpointConfig)
+}
+
+// UpdateEndpointConfig replaces the EndpointConfig for a content type.
+func (h *Handler) UpdateEndpointConfig(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var cfg EndpointConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.repo.UpdateEndpointConfig(r.Context(), id, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, cfg)
+}
+
+// ── Entry handlers ────────────────────────────────────────────────────────────
 
 func (h *Handler) ListEntries(w http.ResponseWriter, r *http.Request) {
 	typeID, err := pathID(r, "typeId")
@@ -111,12 +155,19 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid typeId")
 		return
 	}
-	var entry Entry
-	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
+	// Accept both {data:{...}} envelope and flat {field:value} body
+	var raw map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	var entry Entry
 	entry.ContentTypeID = typeID
+	if nested, ok := raw["data"].(map[string]any); ok {
+		entry.Data = nested
+	} else {
+		entry.Data = raw
+	}
 	if err := h.repo.CreateEntry(r.Context(), &entry); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -125,12 +176,22 @@ func (h *Handler) CreateEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetEntry(w http.ResponseWriter, r *http.Request) {
+	typeID, err := pathID(r, "typeId")
+	if err != nil {
+		// fallback: try "id" param (backward compat)
+		typeID = 0
+	}
 	id, err := pathID(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	entry, err := h.repo.GetEntry(r.Context(), id)
+	var entry *Entry
+	if typeID > 0 {
+		entry, err = h.repo.GetEntryForCT(r.Context(), typeID, id)
+	} else {
+		entry, err = h.repo.GetEntry(r.Context(), id)
+	}
 	if err == sql.ErrNoRows {
 		writeError(w, http.StatusNotFound, "not found")
 		return
@@ -143,6 +204,7 @@ func (h *Handler) GetEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateEntry(w http.ResponseWriter, r *http.Request) {
+	typeID, _ := pathID(r, "typeId")
 	id, err := pathID(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid id")
@@ -154,6 +216,7 @@ func (h *Handler) UpdateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	entry.ID = id
+	entry.ContentTypeID = typeID
 	if err := h.repo.UpdateEntry(r.Context(), &entry); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -162,19 +225,28 @@ func (h *Handler) UpdateEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteEntry(w http.ResponseWriter, r *http.Request) {
+	typeID, _ := pathID(r, "typeId")
 	id, err := pathID(r, "id")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	if err := h.repo.DeleteEntry(r.Context(), id); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
+	if typeID > 0 {
+		if err := h.repo.DeleteEntryForCT(r.Context(), typeID, id); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	} else {
+		if err := h.repo.DeleteEntry(r.Context(), id); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// AddField adds a field to a content type.
+// ── Field handlers ────────────────────────────────────────────────────────────
+
 func (h *Handler) AddField(w http.ResponseWriter, r *http.Request) {
 	ctID, err := pathID(r, "id")
 	if err != nil {
@@ -194,7 +266,6 @@ func (h *Handler) AddField(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, f)
 }
 
-// DeleteField removes a field from a content type.
 func (h *Handler) DeleteField(w http.ResponseWriter, r *http.Request) {
 	fid, err := pathID(r, "fid")
 	if err != nil {
@@ -208,7 +279,6 @@ func (h *Handler) DeleteField(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// ReorderFields updates the display order of fields for a content type.
 func (h *Handler) ReorderFields(w http.ResponseWriter, r *http.Request) {
 	ctID, err := pathID(r, "id")
 	if err != nil {
@@ -233,34 +303,28 @@ func (h *Handler) ReorderFields(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Admin UI page handlers — serve the compiled static HTML shell.
-// Templ generation will replace these with proper server-side rendering.
+// ── Admin UI page handlers ────────────────────────────────────────────────────
 
 func (h *Handler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
-
 func (h *Handler) ListPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
-
 func (h *Handler) NewContentTypePage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
-
 func (h *Handler) BuilderPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
-
 func (h *Handler) EntryListPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
-
 func (h *Handler) EntryEditorPage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "web/static/admin.html")
 }
 
-// helpers
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 func pathID(r *http.Request, key string) (int64, error) {
 	return strconv.ParseInt(r.PathValue(key), 10, 64)

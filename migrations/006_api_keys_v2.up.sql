@@ -1,6 +1,6 @@
 -- Extend api_keys table with type, description, expiry, soft-revoke, and rotation tracking.
 -- Also purges any legacy bcrypt-hashed keys (created before v2).
--- The new system uses SHA-256 for O(1) validation; legacy keys are incompatible.
+-- The new system uses SHA-256 for O(1) validation — legacy keys are incompatible.
 DELETE FROM api_keys;
 
 -- Key type: 'public' (browser-safe, read-only) or 'private' (server-to-server, full read)
