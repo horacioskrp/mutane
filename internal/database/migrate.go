@@ -62,30 +62,62 @@ func RunMigrations(db *sql.DB) error {
 	return nil
 }
 
-// splitStatements splits a SQL file into individual statements on ";",
-// skipping blank lines and SQL-style comments.
+// splitStatements splits a SQL file into individual statements, respecting
+// semicolons inside -- line comments and quoted strings.
 func splitStatements(content string) []string {
 	var stmts []string
-	for _, raw := range strings.Split(content, ";") {
-		stmt := strings.TrimSpace(raw)
-		if stmt == "" {
+	var buf strings.Builder
+	inLineComment := false
+
+	for i := 0; i < len(content); i++ {
+		ch := content[i]
+
+		// Detect start of -- comment
+		if !inLineComment && ch == '-' && i+1 < len(content) && content[i+1] == '-' {
+			inLineComment = true
+			buf.WriteByte(ch)
 			continue
 		}
-		// Strip leading comment-only lines so empty results after comment removal are skipped.
-		var lines []string
-		for _, line := range strings.Split(stmt, "\n") {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" || strings.HasPrefix(trimmed, "--") {
-				continue
+		// End of line comment on newline
+		if inLineComment && ch == '\n' {
+			inLineComment = false
+			buf.WriteByte(ch)
+			continue
+		}
+		// Semicolon inside comment — treat as comment text, not a separator
+		if inLineComment {
+			buf.WriteByte(ch)
+			continue
+		}
+
+		if ch == ';' {
+			// Strip comment-only lines from the accumulated statement
+			stmt := stripCommentLines(buf.String())
+			if stmt != "" {
+				stmts = append(stmts, stmt)
 			}
-			lines = append(lines, line)
-		}
-		if len(lines) == 0 {
+			buf.Reset()
 			continue
 		}
-		stmts = append(stmts, strings.Join(lines, "\n"))
+		buf.WriteByte(ch)
+	}
+	// Trailing content after last semicolon
+	if stmt := stripCommentLines(buf.String()); stmt != "" {
+		stmts = append(stmts, stmt)
 	}
 	return stmts
+}
+
+func stripCommentLines(raw string) string {
+	var lines []string
+	for _, line := range strings.Split(raw, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		lines = append(lines, line)
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
 func truncate(s string, n int) string {
