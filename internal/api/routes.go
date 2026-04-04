@@ -33,8 +33,10 @@ func NewRouter(h *Handler) http.Handler {
 	mux.Handle("POST /api/auth/2fa/verify", BearerAuth(http.HandlerFunc(h.Auth.Verify2FA)))
 
 	// ── Admin JSON API ────────────────────────────────────────────────────────
-	mux.Handle("GET /api/me", BearerAuth(http.HandlerFunc(h.Admin.Me)))
-	mux.Handle("GET /api/stats", BearerAuth(http.HandlerFunc(h.Admin.Stats)))
+	mux.Handle("GET /api/me",           BearerAuth(http.HandlerFunc(h.Admin.Me)))
+	mux.Handle("PATCH /api/me",         BearerAuth(http.HandlerFunc(h.Admin.UpdateMe)))
+	mux.Handle("PATCH /api/me/password",BearerAuth(http.HandlerFunc(h.Admin.UpdatePassword)))
+	mux.Handle("GET /api/stats",        BearerAuth(http.HandlerFunc(h.Admin.Stats)))
 
 	// ── Content types ─────────────────────────────────────────────────────────
 	mux.Handle("GET /api/content-types", BearerAuth(http.HandlerFunc(h.Content.ListContentTypes)))
